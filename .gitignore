@@ -1,0 +1,9 @@
+# Folder untuk dokumen internal & kredensial
+/INTERNAL_TEAM_DOCS/
+
+# File konfigurasi Firebase (SANGAT SENSITIF)
+/lib/firebase_options.dart
+/android/app/google-services.json
+
+
+

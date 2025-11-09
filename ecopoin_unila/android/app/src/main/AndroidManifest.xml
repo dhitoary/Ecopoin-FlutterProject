@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    package="com.ecopoin.unila">
     <application
         android:label="ecopoin_unila"
         android:name="${applicationName}"
