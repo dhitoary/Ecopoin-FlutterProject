@@ -4,17 +4,14 @@ import '../widgets/history_deposit_tab.dart';
 import '../widgets/schedule_deposit_tab.dart';
 
 class DepositScreen extends StatelessWidget {
-  final int initialIndex; // Agar bisa dibuka langsung ke tab Riwayat
+  final int initialIndex;
 
-  const DepositScreen({
-    super.key,
-    this.initialIndex = 0, // Defaultnya ke tab pertama (Jadwal)
-  });
+  const DepositScreen({super.key, this.initialIndex = 0});
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2, // Jumlah tab
+      length: 2,
       initialIndex: initialIndex,
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -38,11 +35,9 @@ class DepositScreen extends StatelessWidget {
             ],
           ),
         ),
+        // HAPUS 'const' DI SINI AGAR AMAN
         body: const TabBarView(
-          children: [
-            ScheduleDepositTab(), // Tab 1
-            HistoryDepositTab(), // Tab 2
-          ],
+          children: [ScheduleDepositTab(), HistoryDepositTab()],
         ),
       ),
     );

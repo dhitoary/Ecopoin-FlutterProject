@@ -1,116 +1,142 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
+import '../../../../services/firestore_service.dart';
 
 class HeroCard extends StatelessWidget {
   const HeroCard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 1. Ambil data user yang sedang login
-    final User? user = FirebaseAuth.instance.currentUser;
-    // 2. Ambil nama depan saja biar rapi (opsional)
-    final String displayName = user?.displayName ?? "Mahasiswa";
-    final String firstName = displayName.split(' ')[0];
+    final FirestoreService firestoreService = FirestoreService();
 
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: AppColors.primary, // Warna hijau utama
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24.0),
-          bottomRight: Radius.circular(24.0),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 30.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Baris Salam & Poin
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    // Pastikan data user tersinkronisasi saat widget ini dimuat
+    firestoreService.syncUserData();
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: firestoreService.getUserStream(),
+      builder: (context, snapshot) {
+        // Default Data (Jika loading / error)
+        String firstName = "Mahasiswa";
+        int points = 0;
+        double totalWeight = 0.0;
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          String fullName = data['displayName'] ?? "Mahasiswa";
+          firstName = fullName.split(' ')[0];
+          points = data['points'] ?? 0;
+          totalWeight = (data['totalDepositWeight'] ?? 0.0).toDouble();
+        }
+
+        return Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(24.0),
+              bottomRight: Radius.circular(24.0),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 30.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "Halo, $firstName! 👋", // 3. Tampilkan nama asli
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Halo, $firstName! 👋",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          "Siap setor sampah hari ini?",
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Siap setor sampah hari ini?",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    // Tampilan Poin LIVE
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.monetization_on,
+                            color: Colors.yellow,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "$points Poin", // DATA ASLI
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                // Tampilan Poin (Nanti kita sambungkan ke Database)
+                const SizedBox(height: 24.0),
+                // Statistik LIVE
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                    ),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      const Icon(
-                        Icons.monetization_on,
-                        color: Colors.yellow,
-                        size: 20,
+                      _buildStatItem(
+                        "Sampah Terkumpul",
+                        "${totalWeight.toStringAsFixed(1)} kg",
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        "0 Poin", // Sementara 0 dulu
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Container(
+                        height: 30,
+                        width: 1,
+                        color: Colors.grey.shade300,
+                      ),
+                      // Asumsi 1kg sampah = hemat 0.5kg CO2 (rumus sederhana)
+                      _buildStatItem(
+                        "Kontribusi CO2",
+                        "${(totalWeight * 0.5).toStringAsFixed(1)} kg",
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 24.0),
-
-            // Card Statistik Singkat (Banner kecil di dalam Hero)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatItem("Sampah Terkumpul", "0 kg"),
-                  Container(height: 30, width: 1, color: Colors.grey.shade300),
-                  _buildStatItem("Kontribusi CO2", "0 g"),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

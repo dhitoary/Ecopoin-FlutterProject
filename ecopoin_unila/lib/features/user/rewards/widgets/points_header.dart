@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
 
 class PointsHeader extends StatelessWidget {
-  const PointsHeader({super.key});
+  final int points; // Terima data poin
+
+  const PointsHeader({super.key, required this.points});
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +22,7 @@ class PointsHeader extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
+              color: AppColors.primary.withOpacity(0.3),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -35,19 +37,23 @@ class PointsHeader extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.monetization_on, color: Colors.yellow, size: 32),
-                SizedBox(width: 12),
+              children: [
+                const Icon(
+                  Icons.monetization_on,
+                  color: Colors.yellow,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
                 Text(
-                  "0", // Nanti kita sambungkan ke Firebase
-                  style: TextStyle(
+                  "$points", // Tampilkan Poin Asli
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 8),
-                Text(
+                const SizedBox(width: 8),
+                const Text(
                   "Pts",
                   style: TextStyle(
                     color: Colors.white70,
@@ -61,7 +67,7 @@ class PointsHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
+import '../../../../services/firestore_service.dart';
 
 class ScheduleDepositTab extends StatefulWidget {
   const ScheduleDepositTab({super.key});
@@ -9,10 +10,12 @@ class ScheduleDepositTab extends StatefulWidget {
 }
 
 class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
-  // Controller form
   final _weightController = TextEditingController();
   final _noteController = TextEditingController();
+  final FirestoreService _firestoreService = FirestoreService();
+
   String? _selectedType;
+  bool _isLoading = false;
 
   final List<String> _trashTypes = [
     'Plastik (Botol/Gelas)',
@@ -22,6 +25,79 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
     'Minyak Jelantah',
   ];
 
+  int _calculatePoints(String type, double weight) {
+    int pointsPerKg = 100;
+    if (type.contains('Plastik')) pointsPerKg = 200;
+    if (type.contains('Logam')) pointsPerKg = 300;
+    if (type.contains('Elektronik')) pointsPerKg = 500;
+    return (weight * pointsPerKg).toInt();
+  }
+
+  void _handleSubmit() async {
+    if (_selectedType == null || _weightController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Mohon lengkapi data jenis dan berat sampah"),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Ganti koma jadi titik, dan parsing aman
+      String weightText = _weightController.text.replaceAll(',', '.');
+      double? weight = double.tryParse(weightText);
+
+      if (weight == null) {
+        throw Exception(
+          "Format berat tidak valid. Gunakan angka (contoh: 2.5)",
+        );
+      }
+
+      int points = _calculatePoints(_selectedType!, weight);
+
+      await _firestoreService.submitDeposit(
+        type: _selectedType!,
+        weight: weight,
+        note: _noteController.text,
+        pointsEarned: points,
+      );
+
+      if (mounted) {
+        _weightController.clear();
+        _noteController.clear();
+        setState(() => _selectedType = null);
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Berhasil! 🎉"),
+            content: Text("Setoran dijadwalkan. Estimasi +$points Poin!"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Gagal: ${e.toString()}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -29,15 +105,12 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner Info
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: AppColors.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
-              ),
+              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
             ),
             child: Row(
               children: const [
@@ -45,7 +118,7 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    "Pastikan sampah sudah dipilah dan dibersihkan sebelum disetor.",
+                    "Poin otomatis masuk setelah tombol ditekan.",
                     style: TextStyle(fontSize: 12, color: AppColors.textDark),
                   ),
                 ),
@@ -54,7 +127,6 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
           ),
           const SizedBox(height: 24),
 
-          // 1. Pilih Jenis Sampah
           const Text(
             "Jenis Sampah",
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -67,19 +139,14 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
             ),
-            items: _trashTypes.map((type) {
-              return DropdownMenuItem(value: type, child: Text(type));
-            }).toList(),
+            items: _trashTypes
+                .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                .toList(),
             onChanged: (value) => setState(() => _selectedType = value),
           ),
           const SizedBox(height: 16),
 
-          // 2. Estimasi Berat
           const Text(
             "Perkiraan Berat (Kg)",
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -87,7 +154,7 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
           const SizedBox(height: 8),
           TextField(
             controller: _weightController,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               hintText: "Contoh: 2.5",
               suffixText: "kg",
@@ -98,17 +165,16 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
           ),
           const SizedBox(height: 16),
 
-          // 3. Catatan Tambahan
           const Text(
-            "Catatan / Lokasi Penjemputan",
+            "Catatan Lokasi",
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _noteController,
-            maxLines: 3,
+            maxLines: 2,
             decoration: InputDecoration(
-              hintText: "Misal: Di depan Gedung G, Teknik Informatika...",
+              hintText: "Lokasi detail...",
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -116,18 +182,10 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
           ),
           const SizedBox(height: 24),
 
-          // Tombol Kirim
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                // Nanti kita sambungkan ke backend
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Fitur setor akan segera aktif!"),
-                  ),
-                );
-              },
+              onPressed: _isLoading ? null : _handleSubmit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -135,14 +193,23 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                "Jadwalkan Penjemputan",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      "Jadwalkan & Dapat Poin",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           ),
         ],

@@ -7,11 +7,11 @@ import '../../education/screens/education_guide_screen.dart';
 import '../../deposit/screens/deposit_screen.dart';
 import '../../rewards/screens/rewards_screen.dart';
 import 'info_education_list_screen.dart';
+import 'article_detail_screen.dart'; // Import halaman artikel
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // Dummy data untuk konten edukasi
   static final List<Map<String, String>> _eduItems = List.generate(
     12,
     (i) => {
@@ -40,7 +40,6 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () {
-              // Fitur Notifikasi (Nanti)
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Belum ada notifikasi baru")),
               );
@@ -56,7 +55,6 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Hero Card (Sudah diperbaiki sebelumnya)
             const HeroCard(),
 
             Padding(
@@ -79,7 +77,6 @@ class HomeScreen extends StatelessWidget {
 
                   Column(
                     children: [
-                      // Tombol 1: Setor Sampah (Buka Tab Jadwal - Default)
                       QuickActionButton(
                         title: "Setor Sampah",
                         icon: Icons.inventory_2_outlined,
@@ -96,7 +93,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12.0),
 
-                      // Tombol 2: Tukar Poin
                       QuickActionButton(
                         title: "Tukar Poin",
                         icon: Icons.card_giftcard_outlined,
@@ -111,7 +107,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12.0),
 
-                      // Tombol 3: Panduan Pilah
                       QuickActionButton(
                         title: "Panduan Pilah",
                         icon: Icons.info_outline,
@@ -126,7 +121,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12.0),
 
-                      // Tombol 4: Riwayat Setoran (Buka Tab Riwayat - Index 1)
                       QuickActionButton(
                         title: "Riwayat Setoran",
                         icon: Icons.history_outlined,
@@ -134,7 +128,6 @@ class HomeScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              // PERUBAHAN UTAMA DI SINI: initialIndex: 1
                               builder: (_) =>
                                   const DepositScreen(initialIndex: 1),
                             ),
@@ -194,7 +187,7 @@ class HomeScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12.0),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
+                              color: Colors.black.withOpacity(0.05),
                               blurRadius: 8.0,
                               offset: const Offset(0, 2),
                             ),
@@ -276,32 +269,74 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 16.0),
 
                   // Kartu Artikel 1
-                  const LargeArticleCard(
-                    title: "Tips Mengurangi Sampah Plastik di Kampus",
+                  LargeArticleCard(
+                    title: "Tips Mengurangi Sampah Plastik",
                     description:
                         "Bawa tumbler sendiri dan kurangi penggunaan sedotan plastik.",
                     date: "20 Mei 2024",
                     imageUrl: "assets/images/article_1.png",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ArticleDetailScreen(
+                            title: "Tips Mengurangi Sampah Plastik",
+                            date: "20 Mei 2024",
+                            imageUrl: "assets/images/article_1.png",
+                            description:
+                                "Sampah plastik menjadi masalah utama di lingkungan kampus. Mulailah dengan membawa botol minum (tumbler) sendiri dari kosan. Selain hemat, ini mengurangi 1 botol plastik per hari. Jangan lupa menolak kantong plastik saat belanja di kantin.",
+                          ),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 16.0),
 
                   // Kartu Artikel 2
-                  const SmallArticleCard(
-                    title: "Manfaat Daur Ulang Sampah Kertas",
+                  SmallArticleCard(
+                    title: "Manfaat Daur Ulang Kertas",
                     description:
                         "Daur ulang 1 ton kertas dapat menyelamatkan 17 pohon.",
                     imageUrl: "assets/images/article_2.png",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ArticleDetailScreen(
+                            title: "Manfaat Daur Ulang Kertas",
+                            date: "18 Mei 2024",
+                            imageUrl: "assets/images/article_2.png",
+                            description:
+                                "Kertas bekas tugas kuliah jangan langsung dibuang! Kumpulkan dan setor ke Bank Sampah Unila. Kertas akan didaur ulang menjadi karton atau kertas seni, menyelamatkan banyak pohon dari penebangan.",
+                          ),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 16.0),
 
                   // Kartu Artikel 3
-                  const SmallArticleCard(
+                  SmallArticleCard(
                     title: "Bahaya Sampah Elektronik (E-Waste)",
                     description:
                         "Jangan buang baterai sembarangan, mengandung B3!",
                     imageUrl: "assets/images/article_3.png",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ArticleDetailScreen(
+                            title: "Bahaya Sampah Elektronik",
+                            date: "15 Mei 2024",
+                            imageUrl: "assets/images/article_3.png",
+                            description:
+                                "Baterai bekas, kabel rusak, dan charger hp lama adalah sampah B3. Jika dibuang ke tanah, zat kimianya bisa meracuni air tanah. Serahkan ke Ecopoin Unila untuk penanganan khusus.",
+                          ),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 24.0),

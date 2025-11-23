@@ -1,109 +1,72 @@
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
 
-class InfoEducationListScreen extends StatefulWidget {
+class InfoEducationListScreen extends StatelessWidget {
   final List<Map<String, String>> items;
 
   const InfoEducationListScreen({super.key, required this.items});
 
   @override
-  State<InfoEducationListScreen> createState() =>
-      _InfoEducationListScreenState();
-}
-
-class _InfoEducationListScreenState extends State<InfoEducationListScreen> {
-  static const int pageSize = 5;
-  int currentPage = 1;
-
-  int get pageCount => (widget.items.length / pageSize).ceil();
-
-  List<Map<String, String>> pageItems(int page) {
-    final start = (page - 1) * pageSize;
-    return widget.items.skip(start).take(pageSize).toList();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final itemsOnPage = pageItems(currentPage);
-
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
         title: const Text(
-          'Info & Edukasi',
+          "Info & Edukasi",
           style: TextStyle(color: AppColors.textDark),
         ),
         centerTitle: true,
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.textDark),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.separated(
-                itemCount: itemsOnPage.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12.0),
-                itemBuilder: (context, idx) {
-                  final it = itemsOnPage[idx];
-                  return Card(
-                    child: ListTile(
-                      title: Text(it['title'] ?? ''),
-                      subtitle: Text(it['summary'] ?? ''),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // Simple pagination controls (prev/next)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: currentPage > 1
-                      ? () => setState(() => currentPage--)
-                      : null,
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                const SizedBox(width: 8.0),
-                Text('Halaman $currentPage dari $pageCount'),
-                const SizedBox(width: 8.0),
-                IconButton(
-                  onPressed: currentPage < pageCount
-                      ? () => setState(() => currentPage++)
-                      : null,
-                  icon: const Icon(Icons.chevron_right),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-
-            const SizedBox(height: 8.0),
-
-            // Page number buttons (allow jump-to-page)
-            Wrap(
-              spacing: 6.0,
-              runSpacing: 6.0,
-              alignment: WrapAlignment.center,
-              children: List<Widget>.generate(pageCount, (i) {
-                final page = i + 1;
-                final isCurrent = page == currentPage;
-                return SizedBox(
-                  width: 40,
-                  height: 36,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: isCurrent ? AppColors.primary : null,
-                      foregroundColor: isCurrent ? AppColors.textDark : null,
-                    ),
-                    onPressed: () => setState(() => currentPage = page),
-                    child: Text('$page'),
-                  ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.article_outlined,
+                  color: AppColors.primary,
+                ),
+              ),
+              title: Text(
+                items[index]['title'] ?? "Info",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(items[index]['summary'] ?? ""),
+              ),
+              onTap: () {
+                // Opsional: Bisa ditambahkan navigasi ke detail info jika perlu
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Detail info belum tersedia")),
                 );
-              }),
+              },
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
