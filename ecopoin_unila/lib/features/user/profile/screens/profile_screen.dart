@@ -1,117 +1,179 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
 import '../widgets/profile_menu_item.dart';
 import '../widgets/stat_card.dart';
+import '../../auth/screens/onboarding_screen.dart';
 
-// Ganti StatelessWidget dengan isi yang baru
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
+  // Fungsi Logout
+  void _handleLogout(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 1. Ambil User saat ini
+    final User? user = FirebaseAuth.instance.currentUser;
+    final String displayName = user?.displayName ?? "Pengguna";
+    final String email = user?.email ?? "email@unila.ac.id";
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        // Judul AppBar (bukan dari HTML)
-        title: const Text(
-          "Profil",
-          style: TextStyle(
-            color: AppColors.textDark,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            const SizedBox(height: 24.0),
-            // --- PROFILE HEADER ---
-            // HTML: <div class="...rounded-full...w-32">
-            const CircleAvatar(
-              radius: 64, // w-32 (128px) / 2 = 64
-              backgroundImage: AssetImage('assets/images/profile_avatar.png'),
-            ),
-            const SizedBox(height: 16.0),
-            // HTML: <p class="...text-[22px] font-bold...">
-            const Text(
-              "Arfan Andhika Pramudya",
-              style: TextStyle(
-                color: AppColors.textDark,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4.0),
-            // HTML: <p class="text-[#4c9a6c]...">
-            const Text(
-              "2315061019",
-              style: TextStyle(color: AppColors.textGreen, fontSize: 16),
-            ),
-            const SizedBox(height: 24.0),
+            const SizedBox(height: 40),
 
-            // --- STATS CARDS ---
-            // HTML: <div class="flex flex-wrap gap-4 p-4">
-            // Kita gunakan Row + Expanded agar rapi dan responsif
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: const [
-                  Expanded(
-                    child: StatCard(title: "Poin Didapat", value: "1200"),
+            // --- HEADER PROFILE ---
+            Center(
+              child: Column(
+                children: [
+                  // Avatar
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.primary, width: 3),
+                      color: Colors.white,
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/profile_avatar.png',
+                        fit: BoxFit.cover,
+                        // Error builder agar tidak crash jika gambar tidak ada
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.grey,
+                            ),
+                      ),
+                    ),
                   ),
-                  SizedBox(width: 16.0),
-                  Expanded(
-                    child: StatCard(title: "Poin Tersedia", value: "300"),
+                  const SizedBox(height: 16),
+
+                  // Nama User Asli
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Email User Asli
+                  Text(
+                    email,
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Badge / Level
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      "🌱 Eco Warrior",
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16.0),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: StatCard(
-                // Kartu ketiga
-                title: "Total Setoran Selesai",
-                value: "25",
+
+            const SizedBox(height: 32),
+
+            // --- STATISTIK (Hapus const di sini) ---
+            Row(
+              children: [
+                // Pastikan StatCard menerima parameter ini
+                Expanded(
+                  child: StatCard(
+                    label: "Setoran",
+                    value: "0",
+                    icon: Icons.history,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: StatCard(label: "Poin", value: "0", icon: Icons.star),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 32),
+
+            // --- MENU OPSI (Hapus const di ProfileMenuItem) ---
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  ProfileMenuItem(
+                    icon: Icons.person_outline,
+                    title: "Edit Profil",
+                    onTap: () {}, // Tambahkan onTap kosong jika wajib
+                  ),
+                  const Divider(height: 1),
+                  ProfileMenuItem(
+                    icon: Icons.lock_outline,
+                    title: "Ganti Password",
+                    onTap: () {},
+                  ),
+                  const Divider(height: 1),
+                  ProfileMenuItem(
+                    icon: Icons.help_outline,
+                    title: "Bantuan & FAQ",
+                    onTap: () {},
+                  ),
+                  const Divider(height: 1),
+
+                  // Tombol Logout
+                  ProfileMenuItem(
+                    icon: Icons.logout,
+                    title: "Keluar",
+                    isDestructive: true,
+                    onTap: () => _handleLogout(context),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 24.0),
 
-            // --- MENU LIST ---
-            // HTML: <div class="flex items-center gap-4...">
-            ProfileMenuItem(
-              title: "Edit Profil",
-              icon: Icons.person_outline,
-              onTap: () {},
-            ),
-            ProfileMenuItem(
-              title: "Pengaturan Notifikasi",
-              icon: Icons.notifications_none,
-              onTap: () {},
-            ),
-            ProfileMenuItem(
-              title: "Bantuan & FAQ",
-              icon: Icons.help_outline,
-              onTap: () {},
-            ),
-            ProfileMenuItem(
-              title: "Tentang Aplikasi",
-              icon: Icons.info_outline,
-              onTap: () {},
-            ),
-            const Divider(height: 32, indent: 16, endIndent: 16),
-            ProfileMenuItem(
-              title: "Logout",
-              icon: Icons.logout,
-              onTap: () {
-                // Tambahkan logika logout di sini
-              },
-              isLogout: true,
-            ),
-            const SizedBox(height: 24.0),
+            const SizedBox(height: 100),
           ],
         ),
       ),

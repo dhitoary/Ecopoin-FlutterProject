@@ -2,61 +2,46 @@ import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
 
 class ProfileMenuItem extends StatelessWidget {
-  final String title;
   final IconData icon;
-  final VoidCallback onTap;
-  final bool isLogout;
+  final String title;
+  final VoidCallback? onTap; // Menambahkan fungsi klik
+  final bool isDestructive; // Untuk tombol "Keluar" (warna merah)
 
   const ProfileMenuItem({
     super.key,
-    required this.title,
     required this.icon,
-    required this.onTap,
-    this.isLogout = false,
+    required this.title,
+    this.onTap,
+    this.isDestructive = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    // HTML: <div class="flex items-center gap-4...min-h-14">
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16.0,
-        vertical: 4.0,
-      ),
-      // HTML: <div class="...bg-[#e7f3ec] shrink-0 size-10">
       leading: Container(
-        width: 40,
-        height: 40,
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isLogout
-              ? const Color.fromRGBO(255, 0, 0, 0.1)
-              : AppColors.inputBackground,
-          borderRadius: BorderRadius.circular(12.0),
+          color: isDestructive
+              ? Colors.red.withValues(alpha: 0.1)
+              : AppColors.primary.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
-          color: isLogout ? Colors.red : AppColors.textDark,
-          size: 24,
+          color: isDestructive ? Colors.red : AppColors.primary,
+          size: 20,
         ),
       ),
-      // HTML: <p class="...text-base font-normal...">
       title: Text(
         title,
         style: TextStyle(
-          color: isLogout ? Colors.red : AppColors.textDark,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
+          color: isDestructive ? Colors.red : AppColors.textDark,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
         ),
       ),
-      // HTML: <div class="...ArrowRight...">
-      trailing: isLogout
-          ? null
-          : const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: AppColors.textDark,
-            ),
+      trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
     );
   }
 }

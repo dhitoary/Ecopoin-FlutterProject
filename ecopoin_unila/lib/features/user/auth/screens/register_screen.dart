@@ -1,30 +1,118 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
+import '../../../../services/firebase_auth_service.dart';
 import '../widgets/auth_text_field.dart';
+import 'login_screen.dart';
 import '../../dashboard/screens/main_screen.dart';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  // Controller untuk input text
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
+  final FirebaseAuthService _authService = FirebaseAuthService();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _handleRegister() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    String name = _nameController.text.trim();
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+    String confirmPassword = _confirmPasswordController.text.trim();
+
+    // 1. Validasi Input
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      _showError("Semua kolom harus diisi");
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showError("Password dan Konfirmasi Password tidak sama");
+      return;
+    }
+
+    if (password.length < 6) {
+      _showError("Password minimal 6 karakter");
+      return;
+    }
+
+    // 2. Proses Register ke Firebase
+    try {
+      UserCredential? user = await _authService.registerWithEmailAndPassword(
+        email: email,
+        password: password,
+        displayName: name,
+      );
+
+      if (user != null && mounted) {
+        // Jika sukses, langsung masuk ke MainScreen dan hapus history route sebelumnya
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      _showError(e.toString().replaceAll("Exception: ", ""));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      // HTML: <div class="flex items-center...">
       appBar: AppBar(
-        // HTML: <div class="...size-12...ArrowLeft">
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        // HTML: <h2 class="...text-center pr-12">Register</h2>
         title: const Text(
-          "Register",
+          "Daftar Akun",
           style: TextStyle(color: AppColors.textDark),
         ),
         centerTitle: true,
         backgroundColor: AppColors.background,
         elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.textDark),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -32,43 +120,43 @@ class RegisterScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16.0),
-
-              // Form Name
-              const AuthTextField(
-                label: "Name",
-                placeholder: "Enter your name",
+              // Form Nama
+              AuthTextField(
+                label: "Nama Lengkap",
+                placeholder: "Masukkan nama lengkap",
+                controller: _nameController,
               ),
               const SizedBox(height: 16.0),
 
-              // Form NPM
-              const AuthTextField(label: "NPM", placeholder: "Enter your NPM"),
-              const SizedBox(height: 16.0),
-
               // Form Email
-              const AuthTextField(
+              AuthTextField(
                 label: "Email",
-                placeholder: "Enter your email",
+                placeholder: "Masukkan email aktif",
+                controller: _emailController,
               ),
               const SizedBox(height: 16.0),
 
               // Form Password
-              const AuthTextField(
+              AuthTextField(
                 label: "Password",
-                placeholder: "Enter your password",
+                placeholder: "Masukkan password",
                 isPassword: true,
+                controller: _passwordController,
               ),
-              const SizedBox(height: 32.0),
+              const SizedBox(height: 16.0),
 
-              // HTML: <button class="...flex-1 bg-[#13e76b]...">
+              // Form Konfirmasi Password
+              AuthTextField(
+                label: "Konfirmasi Password",
+                placeholder: "Ulangi password",
+                isPassword: true,
+                controller: _confirmPasswordController,
+              ),
+              const SizedBox(height: 24.0),
+
+              // Tombol Daftar
               ElevatedButton(
-                onPressed: () {
-                  // DEVELOPMENT: after register, go to MainScreen (bypass)
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const MainScreen()),
-                  );
-                },
+                onPressed: _isLoading ? null : _handleRegister,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.textDark,
@@ -77,28 +165,38 @@ class RegisterScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  "Register",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: AppColors.textDark,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        "Daftar Sekarang",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
               const SizedBox(height: 24.0),
 
-              // HTML: <p class="...text-center underline">Already have an account? Sign In</p>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "Already have an account? ",
+                    "Sudah punya akun? ",
                     style: TextStyle(color: AppColors.textDark),
                   ),
                   TextButton(
                     onPressed: () {
-                      // Navigasi kembali ke Login
-                      Navigator.of(context).pop();
+                      Navigator.pop(context); // Kembali ke Login
                     },
                     child: const Text(
-                      "Sign In",
+                      "Masuk",
                       style: TextStyle(
                         color: AppColors.textGreen,
                         fontWeight: FontWeight.bold,

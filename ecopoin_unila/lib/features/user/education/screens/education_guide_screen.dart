@@ -7,103 +7,137 @@ class EducationGuideScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Data Kategori Sampah
+    final List<Map<String, dynamic>> categories = [
+      {
+        "title": "Sampah Organik",
+        "desc": "Sampah yang mudah terurai secara alami.",
+        "image": "assets/images/category_organik.png",
+        "color": Colors.green,
+        "examples": [
+          "Sisa Makanan",
+          "Daun Kering",
+          "Kulit Buah",
+          "Sisa Sayuran",
+        ],
+      },
+      {
+        "title": "Sampah Anorganik",
+        "desc": "Sampah yang sulit terurai dan dapat didaur ulang.",
+        "image": "assets/images/category_anorganik.png",
+        "color": Colors.orange,
+        "examples": [
+          "Botol Plastik",
+          "Kaleng Minuman",
+          "Kertas & Kardus",
+          "Kaca",
+        ],
+      },
+      {
+        "title": "Sampah B3",
+        "desc": "Bahan Berbahaya dan Beracun.",
+        "image": "assets/images/category_b3.png",
+        "color": Colors.red,
+        "examples": [
+          "Baterai Bekas",
+          "Lampu Neon",
+          "Kemasan Pestisida",
+          "Obat Kadaluarsa",
+        ],
+      },
+    ];
+
+    void showDetail(BuildContext context, Map<String, dynamic> item) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: item['color'].withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.info_outline, color: item['color']),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      item['title'],
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  item['desc'],
+                  style: const TextStyle(fontSize: 16, color: Colors.black87),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "Contoh Sampah:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: (item['examples'] as List<String>).map((ex) {
+                    return Chip(
+                      label: Text(ex),
+                      backgroundColor: item['color'].withValues(alpha: 0.1),
+                      labelStyle: TextStyle(color: item['color']),
+                      side: BorderSide.none,
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      // HTML: <div class="flex items-center...">
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        // HTML: <div class="...ArrowLeft...">
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        // HTML: <h2 class="...text-center pr-12">
         title: const Text(
-          "Panduan Klasifikasi Sampah",
-          style: TextStyle(
-            color: AppColors.textDark,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          "Panduan Pilah Sampah",
+          style: TextStyle(color: AppColors.textDark),
         ),
         centerTitle: true,
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.textDark),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // HTML: <div class="px-4 py-3"> (Search Bar)
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 12.0,
-              ),
-              child: TextFormField(
-                decoration: InputDecoration(
-                  // HTML: placeholder="Cari panduan..."
-                  hintText: "Cari panduan...",
-                  // HTML: placeholder:text-[#4c9a6c]
-                  hintStyle: const TextStyle(color: AppColors.textGreen),
-                  // HTML: <div class="...MagnifyingGlass...">
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.textGreen,
-                  ),
-                  filled: true,
-                  // HTML: bg-[#e7f3ec]
-                  fillColor: AppColors.inputBackground,
-                  // HTML: border-none rounded-lg
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16.0),
-                ),
-              ),
-            ),
-
-            // HTML: <h2 class="...text-[22px] font-bold...">
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0),
-              child: Text(
-                "Kategori Sampah",
-                style: TextStyle(
-                  color: AppColors.textDark,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            // Daftar Kategori
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                children: const [
-                  CategoryCard(
-                    title: "Anorganik",
-                    description: "Plastik, Kaca, Logam",
-                    imageUrl: "assets/images/category_anorganik.png",
-                  ),
-                  SizedBox(height: 24.0),
-                  CategoryCard(
-                    title: "Organik",
-                    description: "Sisa makanan, daun kering, ranting",
-                    imageUrl: "assets/images/category_organik.png",
-                  ),
-                  SizedBox(height: 24.0),
-                  CategoryCard(
-                    title: "B3",
-                    description: "Baterai, Elektronik",
-                    imageUrl: "assets/images/category_b3.png",
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24.0),
-          ],
-        ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          return CategoryCard(
+            title: categories[index]['title'],
+            description: categories[index]['desc'],
+            imageAsset: categories[index]['image'],
+            accentColor: categories[index]['color'],
+            onTap: () => showDetail(context, categories[index]),
+          );
+        },
       ),
     );
   }

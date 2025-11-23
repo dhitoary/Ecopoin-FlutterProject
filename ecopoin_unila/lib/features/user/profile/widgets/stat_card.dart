@@ -2,42 +2,48 @@ import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
 
 class StatCard extends StatelessWidget {
-  final String title;
+  final String label;
   final String value;
+  final IconData icon;
 
-  const StatCard({super.key, required this.title, required this.value});
+  const StatCard({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // HTML: <div class="flex min-w-[158px] flex-1...border...">
-    // Kita gunakan Expanded di parent, jadi di sini kita buat isinya.
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(12.0),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // HTML: <p class="...text-base font-medium...">
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textDark,
-              fontSize: 14, // 16 (base) terlalu besar, kita sesuaikan
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          // HTML: <p class="...text-2xl font-bold...">
+          Icon(icon, color: AppColors.primary, size: 28),
+          const SizedBox(height: 8),
           Text(
             value,
             style: const TextStyle(
-              color: AppColors.textDark,
-              fontSize: 24,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
             ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
         ],
       ),
