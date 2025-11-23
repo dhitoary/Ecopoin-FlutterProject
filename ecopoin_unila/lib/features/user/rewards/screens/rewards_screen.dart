@@ -4,6 +4,7 @@ import '../../../../app/config/app_colors.dart';
 import '../../../../services/firestore_service.dart';
 import '../widgets/points_header.dart';
 import '../widgets/reward_grid_view.dart';
+import 'my_vouchers_screen.dart'; // Import halaman baru
 
 class RewardsScreen extends StatelessWidget {
   const RewardsScreen({super.key});
@@ -23,8 +24,27 @@ class RewardsScreen extends StatelessWidget {
         backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textDark),
+
+        // --- TOMBOL VOUCHER SAYA (BARU) ---
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MyVouchersScreen(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.confirmation_number_outlined,
+              color: AppColors.textDark,
+            ),
+            tooltip: "Voucher Saya",
+          ),
+        ],
+        // ----------------------------------
       ),
-      // WRAP dengan StreamBuilder agar Poin selalu Update
       body: StreamBuilder<DocumentSnapshot>(
         stream: firestoreService.getUserStream(),
         builder: (context, snapshot) {
@@ -37,10 +57,7 @@ class RewardsScreen extends StatelessWidget {
 
           return Column(
             children: [
-              // Kirim data poin ke Header
               PointsHeader(points: currentPoints),
-
-              // Kirim data poin ke Grid untuk validasi
               Expanded(child: RewardGridView(currentPoints: currentPoints)),
             ],
           );

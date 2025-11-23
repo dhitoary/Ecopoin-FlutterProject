@@ -7,7 +7,7 @@ class FirestoreService {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
-  // --- FUNGSI PENGAMAN SUPER (Bisa baca String/Int/Double) ---
+  // --- FUNGSI PENGAMAN TIPE DATA (Safe Parsing) ---
   double _safeDouble(dynamic value) {
     try {
       if (value == null) return 0.0;
@@ -31,7 +31,7 @@ class FirestoreService {
       return 0;
     }
   }
-  // -----------------------------------------------------------
+  // ------------------------------------------------
 
   // 1. STREAM USER DATA
   Stream<DocumentSnapshot> getUserStream() {
@@ -58,7 +58,7 @@ class FirestoreService {
     }
   }
 
-  // 3. FITUR SETOR SAMPAH (Updated)
+  // 3. FITUR SETOR SAMPAH
   Future<void> submitDeposit({
     required String type,
     required double weight,
@@ -73,16 +73,14 @@ class FirestoreService {
         final userSnapshot = await transaction.get(userRef);
 
         if (!userSnapshot.exists) {
-          throw Exception("Data user tidak ditemukan. Silakan relogin.");
+          throw Exception("User data not found");
         }
 
         final data = userSnapshot.data() as Map<String, dynamic>;
-
-        // PENGAMANAN: Baca data dengan fungsi safe
         int currentPoints = _safeInt(data['points']);
         double currentWeight = _safeDouble(data['totalDepositWeight']);
 
-        // Update Poin & Berat (Pastikan hasil akhirnya sesuai format)
+        // Update Poin & Berat
         transaction.update(userRef, {
           'points': currentPoints + pointsEarned,
           'totalDepositWeight': currentWeight + weight,
@@ -101,12 +99,11 @@ class FirestoreService {
         });
       });
     } catch (e) {
-      // Lempar error asli agar muncul di snackbar
-      throw Exception("Gagal transaksi database: $e");
+      rethrow;
     }
   }
 
-  // 4. FITUR TUKAR POIN (Updated)
+  // 4. FITUR TUKAR POIN
   Future<void> redeemReward({
     required String rewardTitle,
     required int cost,
@@ -178,4 +175,14 @@ class FirestoreService {
       await _auth.sendPasswordResetEmail(email: _auth.currentUser!.email!);
     }
   }
-}
+
+  // 8. AMBIL RIWAYAT PENUKARAN (Voucher Saya) - [YANG TADI ERROR]
+  Stream<QuerySnapshot> getRedemptionHistory() {
+    if (currentUserId == null) return const Stream.empty();
+    return _db
+        .collection('transactions')
+        .where('userId', isEqualTo: currentUserId)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+} // <--- Kurung tutup Class FirestoreService harus di paling akhir
