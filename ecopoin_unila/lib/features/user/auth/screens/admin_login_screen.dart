@@ -3,79 +3,67 @@ import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
 import '../../../../services/firebase_auth_service.dart';
 import '../widgets/auth_text_field.dart';
-import '../../dashboard/screens/main_screen.dart';
+import '../../../admin/dashboard/screens/admin_dashboard_screen.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class AdminLoginScreen extends StatefulWidget {
+  const AdminLoginScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<AdminLoginScreen> createState() => _AdminLoginScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
-  // Controller untuk input text
-  final TextEditingController _nameController = TextEditingController();
+class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
 
   final FirebaseAuthService _authService = FirebaseAuthService();
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleRegister() async {
+  void _handleAdminLogin() async {
     setState(() {
       _isLoading = true;
     });
 
-    String name = _nameController.text.trim();
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
-    String confirmPassword = _confirmPasswordController.text.trim();
 
-    // 1. Validasi Input
-    if (name.isEmpty ||
-        email.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty) {
-      _showError("Semua kolom harus diisi");
+    // Validasi input
+    if (email.isEmpty || password.isEmpty) {
+      _showError("Email dan Password tidak boleh kosong");
       return;
     }
 
-    if (password != confirmPassword) {
-      _showError("Password dan Konfirmasi Password tidak sama");
-      return;
-    }
-
-    if (password.length < 6) {
-      _showError("Password minimal 6 karakter");
-      return;
-    }
-
-    // 2. Proses Register ke Firebase
     try {
-      UserCredential? user = await _authService.registerWithEmailAndPassword(
+      // Panggil service login
+      UserCredential? user = await _authService.loginWithEmailAndPassword(
         email: email,
         password: password,
-        displayName: name,
       );
 
       if (user != null && mounted) {
-        // Jika sukses, langsung masuk ke MainScreen dan hapus history route sebelumnya
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-          (route) => false,
-        );
+        // Validasi bahwa user adalah admin/petugas
+        String? role = await _authService.getUserRole(user.user!.uid);
+
+        if (role == 'admin' || role == 'petugas') {
+          // Navigasi ke AdminDashboardScreen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AdminDashboardScreen(),
+            ),
+          );
+        } else {
+          // Jika bukan admin, logout dan tampilkan error
+          await FirebaseAuth.instance.signOut();
+          _showError("Akun ini bukan admin/petugas");
+        }
       }
     } catch (e) {
       _showError(e.toString().replaceAll("Exception: ", ""));
@@ -105,7 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
-          "Daftar Akun",
+          "Login Admin / Petugas",
           style: TextStyle(color: AppColors.textDark),
         ),
         centerTitle: true,
@@ -119,18 +107,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Form Nama
-              AuthTextField(
-                label: "Nama Lengkap",
-                placeholder: "Masukkan nama lengkap",
-                controller: _nameController,
+              const SizedBox(height: 40.0),
+              const Text(
+                "Akses Admin",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
               ),
-              const SizedBox(height: 16.0),
+              const SizedBox(height: 12.0),
+              const Text(
+                "Masukkan kredensial admin Anda",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppColors.textDark),
+              ),
+              const SizedBox(height: 48.0),
 
               // Form Email
               AuthTextField(
-                label: "Email",
-                placeholder: "Masukkan email aktif",
+                label: "Email Admin",
+                placeholder: "Masukkan email admin",
                 controller: _emailController,
               ),
               const SizedBox(height: 16.0),
@@ -142,20 +140,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 isPassword: true,
                 controller: _passwordController,
               ),
-              const SizedBox(height: 16.0),
-
-              // Form Konfirmasi Password
-              AuthTextField(
-                label: "Konfirmasi Password",
-                placeholder: "Ulangi password",
-                isPassword: true,
-                controller: _confirmPasswordController,
-              ),
               const SizedBox(height: 24.0),
 
-              // Tombol Daftar
+              // Tombol Login
               ElevatedButton(
-                onPressed: _isLoading ? null : _handleRegister,
+                onPressed: _isLoading ? null : _handleAdminLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.textDark,
@@ -174,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       )
                     : const Text(
-                        "Daftar Sekarang",
+                        "Masuk sebagai Admin",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -183,11 +172,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 24.0),
 
+              // Link kembali ke login user
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "Sudah punya akun? ",
+                    "Bukan admin? ",
                     style: TextStyle(color: AppColors.textDark),
                   ),
                   TextButton(
@@ -195,7 +185,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Navigator.pop(context); // Kembali ke Login
                     },
                     child: const Text(
-                      "Masuk",
+                      "Login sebagai User",
                       style: TextStyle(
                         color: AppColors.textGreen,
                         fontWeight: FontWeight.bold,

@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Rules untuk rewards collection
+    match /rewards/{document=**} {
+      // Allow read untuk semua authenticated users
+      allow read: if request.auth != null;
+
+      // Allow create, update, delete hanya untuk admin atau petugas
+      allow create: if request.auth != null &&
+                       (request.auth.token.role == "admin" ||
+                        request.auth.token.role == "petugas");
+
+      allow update: if request.auth != null &&
+                       (request.auth.token.role == "admin" ||
+                        request.auth.token.role == "petugas");
+
+      allow delete: if request.auth != null &&
+                       (request.auth.token.role == "admin" ||
+                        request.auth.token.role == "petugas");
+    }
+
+    // Rules untuk users collection (existing)
+    match /users/{userId} {
+      // Users can read their own data
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Users can update their own data
+      allow update: if request.auth != null && request.auth.uid == userId;
+
+      // Admin can read all users
+      allow read: if request.auth != null &&
+                     request.auth.token.role == "admin";
+
+      // Admin can update all users
+      allow update: if request.auth != null &&
+                       request.auth.token.role == "admin";
+    }
+
+    // Rules untuk verificationRequests collection (existing)
+    match /verificationRequests/{document=**} {
+      // Allow read untuk semua authenticated users
+      allow read: if request.auth != null;
+
+      // Allow create untuk semua authenticated users (users submit requests)
+      allow create: if request.auth != null;
+
+      // Allow update/delete hanya untuk admin atau petugas
+      allow update: if request.auth != null &&
+                       (request.auth.token.role == "admin" ||
+                        request.auth.token.role == "petugas");
+
+      allow delete: if request.auth != null &&
+                       (request.auth.token.role == "admin" ||
+                        request.auth.token.role == "petugas");
+    }
+
+    // Rules untuk notifications collection (existing)
+    match /notifications/{document=**} {
+      // Users can read their own notifications
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      // Admin can read all notifications
+      allow read: if request.auth != null &&
+                     request.auth.token.role == "admin";
+
+      // Only admin can create notifications
+      allow create: if request.auth != null &&
+                       request.auth.token.role == "admin";
+
+      // Only admin can update/delete notifications
+      allow update: if request.auth != null &&
+                       request.auth.token.role == "admin";
+
+      allow delete: if request.auth != null &&
+                       request.auth.token.role == "admin";
+    }
+  }
+}

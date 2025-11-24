@@ -56,13 +56,11 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
         );
       }
 
-      int points = _calculatePoints(_selectedType!, weight);
-
       await _firestoreService.submitDeposit(
         type: _selectedType!,
         weight: weight,
         note: _noteController.text,
-        pointsEarned: points,
+        photoUrl: '', // Placeholder - akan diisi dari foto di screen sebelumnya
       );
 
       if (mounted) {
@@ -74,7 +72,9 @@ class _ScheduleDepositTabState extends State<ScheduleDepositTab> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text("Berhasil! 🎉"),
-            content: Text("Setoran dijadwalkan. Estimasi +$points Poin!"),
+            content: const Text(
+              "Setoran Anda sedang menunggu verifikasi admin. Anda akan mendapat notifikasi setelah disetujui.",
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),

@@ -4,6 +4,7 @@ import '../../../../app/config/app_colors.dart';
 import '../../../../services/firebase_auth_service.dart'; // Pastikan import ini benar
 import '../widgets/auth_text_field.dart';
 import 'register_screen.dart';
+import 'admin_login_screen.dart';
 import '../../dashboard/screens/main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -189,8 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              RegisterScreen(), // Pastikan RegisterScreen sudah ada
+                          builder: (context) => RegisterScreen(),
                         ),
                       );
                     },
@@ -204,6 +204,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 40),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminLoginScreen(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "Login sebagai Admin / Petugas",
+                  style: TextStyle(
+                    color: AppColors.textGreen,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
               ),
             ],
           ),

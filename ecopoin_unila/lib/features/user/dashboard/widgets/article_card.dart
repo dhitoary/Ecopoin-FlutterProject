@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../app/config/app_colors.dart';
 
 // WIDGET KARTU BESAR
 class LargeArticleCard extends StatelessWidget {

@@ -58,49 +58,42 @@ class FirestoreService {
     }
   }
 
-  // 3. FITUR SETOR SAMPAH
+  // 3. FITUR SETOR SAMPAH (Updated - Requires Admin Verification)
   Future<void> submitDeposit({
     required String type,
     required double weight,
     required String note,
-    required int pointsEarned,
+    required String photoUrl,
   }) async {
     if (currentUserId == null) return;
 
     try {
-      await _db.runTransaction((transaction) async {
-        final userRef = _db.collection('users').doc(currentUserId);
-        final userSnapshot = await transaction.get(userRef);
-
-        if (!userSnapshot.exists) {
-          throw Exception("User data not found");
-        }
-
-        final data = userSnapshot.data() as Map<String, dynamic>;
-        int currentPoints = _safeInt(data['points']);
-        double currentWeight = _safeDouble(data['totalDepositWeight']);
-
-        // Update Poin & Berat
-        transaction.update(userRef, {
-          'points': currentPoints + pointsEarned,
-          'totalDepositWeight': currentWeight + weight,
-        });
-
-        // Catat Riwayat
-        final depositRef = _db.collection('deposits').doc();
-        transaction.set(depositRef, {
-          'userId': currentUserId,
-          'type': type,
-          'weight': weight,
-          'note': note,
-          'pointsEarned': pointsEarned,
-          'status': 'Menunggu',
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+      // Membuat verification request alih-alih langsung menambah poin
+      await _db.collection('verificationRequests').add({
+        'userId': currentUserId,
+        'depositAmount': weight,
+        'photoUrl': photoUrl,
+        'type': type,
+        'note': note,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+        'approvedAt': null,
+        'approvedBy': null,
+        'rejectionReason': null,
       });
     } catch (e) {
       rethrow;
     }
+  }
+
+  // 3.5 GET USER VERIFICATION REQUESTS (For user dashboard)
+  Stream<QuerySnapshot> getUserVerificationRequests() {
+    if (currentUserId == null) return const Stream.empty();
+    return _db
+        .collection('verificationRequests')
+        .where('userId', isEqualTo: currentUserId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
 
   // 4. FITUR TUKAR POIN
