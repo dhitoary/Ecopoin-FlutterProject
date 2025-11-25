@@ -55,10 +55,10 @@ class UserRewardsService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => RewardModel.fromMap(doc.id, doc.data()))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => RewardModel.fromMap(doc.id, doc.data()))
+              .toList();
+        });
   }
 
   /// Get all available rewards (one-time query)
@@ -103,9 +103,7 @@ class UserRewardsService {
         }
 
         // Update reward quantity
-        transaction.update(rewardRef, {
-          'quantity': currentQuantity - 1,
-        });
+        transaction.update(rewardRef, {'quantity': currentQuantity - 1});
 
         // Create voucher/redemption record for user
         final voucherRef = _firestore.collection('userVouchers').doc();
@@ -128,9 +126,7 @@ class UserRewardsService {
           final userData = userSnapshot.data()!;
           int currentPoints = userData['points'] ?? 0;
 
-          transaction.update(userRef, {
-            'points': currentPoints - pointsCost,
-          });
+          transaction.update(userRef, {'points': currentPoints - pointsCost});
         }
       });
     } catch (e) {

@@ -15,9 +15,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         title: const Text('Manajemen Pengguna'),
         centerTitle: true,
       ),
-      body: const Center(
-        child: Text('User Management - Coming Soon'),
-      ),
+      body: const Center(child: Text('User Management - Coming Soon')),
     );
   }
 }

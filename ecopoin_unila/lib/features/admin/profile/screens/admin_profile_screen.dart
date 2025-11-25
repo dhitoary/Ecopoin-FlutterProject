@@ -47,7 +47,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Logout', style: TextStyle(color: Color(0xFFFF3B30))),
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Color(0xFFFF3B30)),
+                ),
               ),
             ],
           );
@@ -62,9 +65,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           }
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error logout: $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error logout: $e')));
           }
         }
       }
@@ -153,7 +156,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   onTap: () {
                     // TODO: Navigate to user management screen
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User management coming soon')),
+                      const SnackBar(
+                        content: Text('User management coming soon'),
+                      ),
                     );
                   },
                 ),
@@ -182,7 +187,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   onTap: () {
                     // TODO: Navigate to help screen
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Help & Support coming soon')),
+                      const SnackBar(
+                        content: Text('Help & Support coming soon'),
+                      ),
                     );
                   },
                 ),

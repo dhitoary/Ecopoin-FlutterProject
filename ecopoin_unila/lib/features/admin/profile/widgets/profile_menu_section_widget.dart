@@ -45,9 +45,7 @@ class ProfileMenuSectionWidget extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Column(
-              children: children,
-            ),
+            child: Column(children: children),
           ),
         ),
       ],

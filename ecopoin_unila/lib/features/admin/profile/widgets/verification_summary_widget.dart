@@ -4,10 +4,8 @@ import '../../../../services/verification_service.dart';
 class VerificationSummaryWidget extends StatelessWidget {
   final VerificationService verificationService;
 
-  const VerificationSummaryWidget({
-    Key? key,
-    required this.verificationService,
-  }) : super(key: key);
+  const VerificationSummaryWidget({Key? key, required this.verificationService})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {

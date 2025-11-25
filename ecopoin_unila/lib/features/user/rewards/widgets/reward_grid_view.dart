@@ -56,7 +56,8 @@ class RewardGridView extends StatelessWidget {
                   return RewardCard(
                     title: reward.name,
                     points: reward.pointsRequired,
-                    imageUrl: reward.imageUrl ?? 'assets/images/reward_default.png',
+                    imageUrl:
+                        reward.imageUrl ?? 'assets/images/reward_default.png',
                     stock: reward.quantity,
                     onTap: () => _handleRedeem(
                       context,

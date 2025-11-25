@@ -233,9 +233,11 @@ class VerificationService {
     return _db
         .collection('verificationRequests')
         .where('status', isEqualTo: 'approved')
-        .where('approvedAt',
-            isGreaterThanOrEqualTo: startOfDay,
-            isLessThanOrEqualTo: endOfDay)
+        .where(
+          'approvedAt',
+          isGreaterThanOrEqualTo: startOfDay,
+          isLessThanOrEqualTo: endOfDay,
+        )
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
@@ -250,9 +252,11 @@ class VerificationService {
       final snapshot = await _db
           .collection('verificationRequests')
           .where('status', isEqualTo: 'approved')
-          .where('approvedAt',
-              isGreaterThanOrEqualTo: startOfDay,
-              isLessThanOrEqualTo: endOfDay)
+          .where(
+            'approvedAt',
+            isGreaterThanOrEqualTo: startOfDay,
+            isLessThanOrEqualTo: endOfDay,
+          )
           .get();
 
       return snapshot.docs.length;

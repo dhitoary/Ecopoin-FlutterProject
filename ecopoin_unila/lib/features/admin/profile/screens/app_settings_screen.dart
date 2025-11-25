@@ -15,9 +15,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
         title: const Text('Pengaturan Aplikasi'),
         centerTitle: true,
       ),
-      body: const Center(
-        child: Text('App Settings - Coming Soon'),
-      ),
+      body: const Center(child: Text('App Settings - Coming Soon')),
     );
   }
 }

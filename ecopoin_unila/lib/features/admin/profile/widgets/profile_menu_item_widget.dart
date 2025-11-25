@@ -34,11 +34,7 @@ class ProfileMenuItemWidget extends StatelessWidget {
                       color: const Color(0xFF00A551).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      icon,
-                      color: const Color(0xFF00A551),
-                      size: 20,
-                    ),
+                    child: Icon(icon, color: const Color(0xFF00A551), size: 20),
                   ),
                   const SizedBox(width: 16),
 
@@ -55,11 +51,7 @@ class ProfileMenuItemWidget extends StatelessWidget {
                   ),
 
                   // Chevron
-                  const Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey,
-                    size: 20,
-                  ),
+                  const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
                 ],
               ),
             ),
@@ -68,10 +60,7 @@ class ProfileMenuItemWidget extends StatelessWidget {
         if (divider)
           Padding(
             padding: const EdgeInsets.only(left: 72),
-            child: Divider(
-              height: 1,
-              color: Colors.grey[300],
-            ),
+            child: Divider(height: 1, color: Colors.grey[300]),
           ),
       ],
     );

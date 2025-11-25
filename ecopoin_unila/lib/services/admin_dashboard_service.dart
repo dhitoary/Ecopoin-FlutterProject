@@ -38,14 +38,14 @@ class AdminDashboardService {
         .where('status', isEqualTo: 'approved')
         .snapshots()
         .map((snapshot) {
-      double total = 0;
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final amount = _safeDouble(data['depositAmount'] ?? 0);
-        total += amount;
-      }
-      return total;
-    });
+          double total = 0;
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            final amount = _safeDouble(data['depositAmount'] ?? 0);
+            total += amount;
+          }
+          return total;
+        });
   }
 
   /// Future untuk one-time query total waste

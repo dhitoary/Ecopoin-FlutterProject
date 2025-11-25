@@ -15,9 +15,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         title: const Text('Bantuan & Dukungan'),
         centerTitle: true,
       ),
-      body: const Center(
-        child: Text('Help & Support - Coming Soon'),
-      ),
+      body: const Center(child: Text('Help & Support - Coming Soon')),
     );
   }
 }
