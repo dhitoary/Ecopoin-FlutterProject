@@ -1,52 +1,97 @@
 import 'package:flutter/material.dart';
 import '../../../../services/firestore_service.dart';
+import '../../../../services/user_rewards_service.dart';
 import 'reward_card.dart';
 
 class RewardGridView extends StatelessWidget {
-  final int currentPoints; // Data poin user saat ini
+  final int currentPoints;
 
   const RewardGridView({super.key, required this.currentPoints});
 
   @override
   Widget build(BuildContext context) {
     final FirestoreService firestoreService = FirestoreService();
+    final UserRewardsService userRewardsService = UserRewardsService();
 
-    final List<Map<String, dynamic>> rewards = [
-      {
-        "title": "Voucher Kantin",
-        "points": 500,
-        "image": "assets/images/reward_voucher.png",
-        "stock": 50,
-      },
-      {
-        "title": "Totebag Unila",
-        "points": 1500,
-        "image": "assets/images/reward_totebag.png",
-        "stock": 15,
-      },
-      {
-        "title": "Kopi Gratis",
-        "points": 300,
-        "image": "assets/images/reward_coffee.png",
-        "stock": 100,
-      },
-      {
-        "title": "Saldo E-Wallet",
-        "points": 2500,
-        "image": "assets/images/reward_giftcard.png",
-        "stock": 10,
-      },
-    ];
+    return StreamBuilder<List<RewardModel>>(
+      stream: userRewardsService.getRewardsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    void handleRedeem(String title, int cost) {
-      // --- LOGIKA BARU: CEK SALDO DULU ---
-      if (currentPoints < cost) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final rewards = snapshot.data ?? [];
+
+        if (rewards.isEmpty) {
+          return const Center(child: Text('Tidak ada reward tersedia'));
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                "Katalog Hadiah",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.75,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: rewards.length,
+                itemBuilder: (context, index) {
+                  final reward = rewards[index];
+                  return RewardCard(
+                    title: reward.name,
+                    points: reward.pointsRequired,
+                    imageUrl: reward.imageUrl ?? 'assets/images/reward_default.png',
+                    stock: reward.quantity,
+                    onTap: () => _handleRedeem(
+                      context,
+                      firestoreService,
+                      userRewardsService,
+                      reward.id,
+                      reward.name,
+                      reward.pointsRequired,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleRedeem(
+    BuildContext context,
+    FirestoreService firestoreService,
+    UserRewardsService userRewardsService,
+    String rewardId,
+    String rewardName,
+    int pointsCost,
+  ) async {
+    if (currentPoints < pointsCost) {
+      if (context.mounted) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text("Poin Tidak Cukup 😔"),
             content: Text(
-              "Anda butuh $cost Poin, tapi saldo Anda hanya $currentPoints Poin.\n\nYuk setor sampah lagi untuk tambah poin!",
+              "Anda butuh $pointsCost Poin, tapi saldo Anda hanya $currentPoints Poin.\n\nYuk setor sampah lagi untuk tambah poin!",
             ),
             actions: [
               TextButton(
@@ -56,15 +101,16 @@ class RewardGridView extends StatelessWidget {
             ],
           ),
         );
-        return; // Stop proses di sini
       }
-      // -----------------------------------
+      return;
+    }
 
+    if (context.mounted) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text("Konfirmasi Penukaran"),
-          content: Text("Tukar $cost Poin untuk $title?"),
+          content: Text("Tukar $pointsCost Poin untuk $rewardName?"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -74,10 +120,18 @@ class RewardGridView extends StatelessWidget {
               onPressed: () async {
                 Navigator.pop(context);
                 try {
-                  await firestoreService.redeemReward(
-                    rewardTitle: title,
-                    cost: cost,
+                  final userId = firestoreService.currentUserId;
+                  if (userId == null) {
+                    throw Exception('User not authenticated');
+                  }
+
+                  await userRewardsService.redeemReward(
+                    rewardId: rewardId,
+                    userId: userId,
+                    rewardName: rewardName,
+                    pointsCost: pointsCost,
                   );
+
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -103,43 +157,5 @@ class RewardGridView extends StatelessWidget {
         ),
       );
     }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
-            "Katalog Hadiah",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.75,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            itemCount: rewards.length,
-            itemBuilder: (context, index) {
-              return RewardCard(
-                title: rewards[index]['title'],
-                points: rewards[index]['points'],
-                imageUrl: rewards[index]['image'],
-                stock: rewards[index]['stock'],
-                onTap: () => handleRedeem(
-                  rewards[index]['title'],
-                  rewards[index]['points'],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
   }
 }

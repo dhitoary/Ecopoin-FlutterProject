@@ -4,9 +4,11 @@ import 'package:intl/intl.dart';
 import '../../../../app/config/app_colors.dart';
 import '../../../../services/verification_service.dart';
 import '../../../../services/firebase_auth_service.dart';
+import '../../../../services/admin_dashboard_service.dart';
 import '../../../user/auth/screens/login_screen.dart';
 import 'verification_detail_screen.dart';
 import '../../rewards/screens/admin_rewards_management_screen.dart';
+import '../../profile/screens/admin_profile_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({Key? key}) : super(key: key);
@@ -17,6 +19,7 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final VerificationService _verificationService = VerificationService();
+  final AdminDashboardService _dashboardService = AdminDashboardService();
   final FirebaseAuthService _authService = FirebaseAuthService();
   int _selectedTabIndex = 0;
 
@@ -108,67 +111,81 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
+                // Total Mahasiswa Terdaftar
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xffcfe7d9)),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          "Total Mahasiswa Terdaftar",
-                          style: TextStyle(
-                            color: AppColors.textDark,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  child: StreamBuilder<int>(
+                    stream: _dashboardService.getTotalUsersStream(),
+                    builder: (context, snapshot) {
+                      final totalUsers = snapshot.data ?? 0;
+                      return Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xffcfe7d9)),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          "2500",
-                          style: TextStyle(
-                            color: AppColors.textDark,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Total Mahasiswa Terdaftar",
+                              style: TextStyle(
+                                color: AppColors.textDark,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              totalUsers.toString(),
+                              style: const TextStyle(
+                                color: AppColors.textDark,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 16),
+                // Total Sampah (Kg)
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xffcfe7d9)),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          "Total Sampah (Kg)",
-                          style: TextStyle(
-                            color: AppColors.textDark,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  child: StreamBuilder<double>(
+                    stream: _dashboardService.getTotalWasteStream(),
+                    builder: (context, snapshot) {
+                      final totalWaste = snapshot.data ?? 0.0;
+                      return Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xffcfe7d9)),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          "15000",
-                          style: TextStyle(
-                            color: AppColors.textDark,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Total Sampah (Kg)",
+                              style: TextStyle(
+                                color: AppColors.textDark,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              totalWaste.toStringAsFixed(2),
+                              style: const TextStyle(
+                                color: AppColors.textDark,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -493,22 +510,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildProfileTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildHeader("Profil"),
-          const SizedBox(height: 32),
-          const Text("Halaman Profil sedang dikembangkan"),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: _handleLogout,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Logout"),
-          ),
-        ],
-      ),
-    );
+    return const AdminProfileScreen();
   }
 
   Widget _buildHeader(String title) {

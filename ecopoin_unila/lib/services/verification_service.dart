@@ -221,4 +221,44 @@ class VerificationService {
       return {'pending': 0, 'approved': 0, 'rejected': 0};
     }
   }
+
+  // 9. GET TODAY'S VERIFICATION COUNT (STREAM - Real-time)
+  /// Returns a stream that emits the count of verifications created today
+  /// This will update in real-time as new verifications are approved/created
+  Stream<int> getTodaysVerificationCountStream() {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+
+    return _db
+        .collection('verificationRequests')
+        .where('status', isEqualTo: 'approved')
+        .where('approvedAt',
+            isGreaterThanOrEqualTo: startOfDay,
+            isLessThanOrEqualTo: endOfDay)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // 10. GET TODAY'S VERIFICATION COUNT (FUTURE - One-time query)
+  Future<int> getTodaysVerificationCount() async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+
+    try {
+      final snapshot = await _db
+          .collection('verificationRequests')
+          .where('status', isEqualTo: 'approved')
+          .where('approvedAt',
+              isGreaterThanOrEqualTo: startOfDay,
+              isLessThanOrEqualTo: endOfDay)
+          .get();
+
+      return snapshot.docs.length;
+    } catch (e) {
+      debugPrint('Error getting todays verification count: $e');
+      return 0;
+    }
+  }
 }
