@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../../app/config/app_colors.dart';
+// Import Absolute
+import 'package:ecopoin_unila/app/config/app_colors.dart';
 
 class HelpSupportScreen extends StatelessWidget {
-  const HelpSupportScreen({Key? key}) : super(key: key);
+  const HelpSupportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +16,7 @@ class HelpSupportScreen extends StatelessWidget {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(

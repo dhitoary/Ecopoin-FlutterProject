@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../../../app/config/app_colors.dart';
+// Import Absolute
+import 'package:ecopoin_unila/app/config/app_colors.dart';
 
 class UserManagementScreen extends StatefulWidget {
-  const UserManagementScreen({Key? key}) : super(key: key);
+  const UserManagementScreen({super.key});
 
   @override
   State<UserManagementScreen> createState() => _UserManagementScreenState();
@@ -24,6 +25,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Column(
@@ -72,7 +74,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   );
                 }
 
-                // Client-side filtering untuk search (Firestore terbatas untuk partial search string)
+                // Client-side filtering untuk search
                 final users = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final name = (data['displayName'] ?? '')
@@ -81,22 +83,32 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   return name.contains(_searchQuery);
                 }).toList();
 
+                if (users.isEmpty) {
+                  return const Center(child: Text("Pengguna tidak ditemukan"));
+                }
+
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: users.length,
                   itemBuilder: (context, index) {
                     final data = users[index].data() as Map<String, dynamic>;
+                    // Handle potential null/int/double for points & weight
+                    final points = data['points'] ?? 0;
+                    final weight = data['totalDepositWeight'] ?? 0;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      elevation: 2,
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: AppColors.primary.withOpacity(0.1),
                           child: Text(
-                            (data['displayName'] ?? 'U')[0].toUpperCase(),
+                            (data['displayName'] ?? 'U')
+                                .toString()[0]
+                                .toUpperCase(),
                             style: const TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
@@ -111,8 +123,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(data['email'] ?? '-'),
+                            const SizedBox(height: 4),
                             Text(
-                              "Poin: ${data['points'] ?? 0} | Setoran: ${(data['totalDepositWeight'] ?? 0).toStringAsFixed(1)} kg",
+                              "Poin: $points | Setoran: ${weight.toString()} kg",
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -122,9 +135,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         ),
                         isThreeLine: true,
                         trailing: IconButton(
-                          icon: const Icon(Icons.info_outline),
+                          icon: const Icon(Icons.copy, size: 20),
                           onPressed: () {
-                            // Bisa ditambahkan navigasi ke detail user jika perlu
+                            // Copy ID atau aksi lain
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text("ID: ${users[index].id}")),
                             );

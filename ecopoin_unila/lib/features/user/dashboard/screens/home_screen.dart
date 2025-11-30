@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
-import '../../../../app/config/app_colors.dart';
-import '../widgets/article_card.dart';
-import '../widgets/hero_card.dart';
-import '../widgets/quick_action_button.dart';
-import '../../education/screens/education_guide_screen.dart';
-import '../../deposit/screens/deposit_screen.dart';
-import '../../rewards/screens/rewards_screen.dart';
+
+// Import Config
+import 'package:ecopoin_unila/app/config/app_colors.dart';
+
+// Import Widgets
+import 'package:ecopoin_unila/features/user/dashboard/widgets/article_card.dart';
+import 'package:ecopoin_unila/features/user/dashboard/widgets/hero_card.dart';
+import 'package:ecopoin_unila/features/user/dashboard/widgets/quick_action_button.dart';
+
+// Import Screens
+import 'package:ecopoin_unila/features/user/education/screens/education_guide_screen.dart';
+import 'package:ecopoin_unila/features/user/deposit/screens/deposit_screen.dart';
+import 'package:ecopoin_unila/features/user/rewards/screens/rewards_screen.dart';
+import 'package:ecopoin_unila/features/user/notifications/screens/notification_screen.dart'; // Import Notifikasi
 import 'info_education_list_screen.dart';
-import 'article_detail_screen.dart'; // Import halaman artikel
+import 'article_detail_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  // Data Dummy untuk Info & Edukasi
   static final List<Map<String, String>> _eduItems = List.generate(
     12,
     (i) => {
@@ -23,6 +31,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ambil 3 item pertama untuk preview di Home
     final top3 = _eduItems.take(3).toList();
 
     return Scaffold(
@@ -40,8 +49,12 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Belum ada notifikasi baru")),
+              // Navigasi ke Halaman Notifikasi
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationScreen(),
+                ),
               );
             },
             icon: const Icon(
@@ -55,6 +68,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 1. Hero Card (Saldo Poin & Statistik)
             const HeroCard(),
 
             Padding(
@@ -72,7 +86,6 @@ class HomeScreen extends StatelessWidget {
                       color: AppColors.textDark,
                     ),
                   ),
-
                   const SizedBox(height: 16.0),
 
                   Column(
@@ -92,7 +105,6 @@ class HomeScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12.0),
-
                       QuickActionButton(
                         title: "Tukar Poin",
                         icon: Icons.card_giftcard_outlined,
@@ -106,7 +118,6 @@ class HomeScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12.0),
-
                       QuickActionButton(
                         title: "Panduan Pilah",
                         icon: Icons.info_outline,
@@ -120,7 +131,6 @@ class HomeScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12.0),
-
                       QuickActionButton(
                         title: "Riwayat Setoran",
                         icon: Icons.history_outlined,
@@ -139,7 +149,7 @@ class HomeScreen extends StatelessWidget {
 
                   const SizedBox(height: 32.0),
 
-                  // 3. Info & Edukasi
+                  // 3. Info & Edukasi Section
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -172,10 +182,9 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 12.0),
 
-                  // Preview List Edukasi
+                  // List Edukasi Preview
                   Column(
                     children: top3.asMap().entries.map((entry) {
                       final isLast = entry.key == top3.length - 1;
@@ -257,7 +266,7 @@ class HomeScreen extends StatelessWidget {
 
                   const SizedBox(height: 32.0),
 
-                  // 4. Artikel & Tips
+                  // 4. Artikel & Tips Section
                   Text(
                     'Artikel & Tips',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -265,10 +274,9 @@ class HomeScreen extends StatelessWidget {
                       color: AppColors.textDark,
                     ),
                   ),
-
                   const SizedBox(height: 16.0),
 
-                  // Kartu Artikel 1
+                  // Kartu Artikel 1 (Besar)
                   LargeArticleCard(
                     title: "Tips Mengurangi Sampah Plastik",
                     description:
@@ -290,10 +298,9 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
-
                   const SizedBox(height: 16.0),
 
-                  // Kartu Artikel 2
+                  // Kartu Artikel 2 (Kecil)
                   SmallArticleCard(
                     title: "Manfaat Daur Ulang Kertas",
                     description:
@@ -314,10 +321,9 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
-
                   const SizedBox(height: 16.0),
 
-                  // Kartu Artikel 3
+                  // Kartu Artikel 3 (Kecil)
                   SmallArticleCard(
                     title: "Bahaya Sampah Elektronik (E-Waste)",
                     description:
@@ -338,7 +344,6 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
-
                   const SizedBox(height: 24.0),
                 ],
               ),

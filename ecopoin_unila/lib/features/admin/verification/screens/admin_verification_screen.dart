@@ -1,8 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../../app/config/app_colors.dart';
-import '../../dashboard/screens/verification_detail_screen.dart';
+
+import 'package:ecopoin_unila/app/config/app_colors.dart';
+import 'package:ecopoin_unila/features/admin/dashboard/screens/verification_detail_screen.dart';
 
 class AdminVerificationScreen extends StatefulWidget {
   const AdminVerificationScreen({super.key});
@@ -36,14 +37,14 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
       appBar: AppBar(
         title: const Text(
           "Verifikasi Setoran",
-          style: TextStyle(color: AppColors.textDark),
+          style: TextStyle(color: Colors.black),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
         bottom: TabBar(
-          controller:
-              _tabController, // PERBAIKAN: Gunakan titik dua (:), bukan titik (.)
+          controller: _tabController,
           labelColor: AppColors.primary,
           unselectedLabelColor: Colors.grey,
           indicatorColor: AppColors.primary,
@@ -67,10 +68,10 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
 
   Widget _buildListByStatus(String status) {
     return StreamBuilder<QuerySnapshot>(
+      // PERBAIKAN: Hapus .orderBy('createdAt') agar data muncul tanpa Index Firestore
       stream: _firestore
           .collection('verificationRequests')
           .where('status', isEqualTo: status)
-          .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -99,7 +100,6 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
           itemBuilder: (context, index) {
             final doc = snapshot.data!.docs[index];
             final data = doc.data() as Map<String, dynamic>;
-
             return _buildCard(doc.id, data);
           },
         );
@@ -108,17 +108,23 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
   }
 
   Widget _buildCard(String docId, Map<String, dynamic> data) {
-    final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
-    final depositAmount = data['depositAmount'] ?? 0;
+    // Handling null timestamp gracefully
+    DateTime? date;
+    if (data['createdAt'] != null && data['createdAt'] is Timestamp) {
+      date = (data['createdAt'] as Timestamp).toDate();
+    }
 
-    // Helper untuk warna status jika diperlukan (opsional)
-    Color statusColor = Colors.grey;
-    if (data['status'] == 'approved')
-      statusColor = Colors.green;
-    else if (data['status'] == 'rejected')
-      statusColor = Colors.red;
-    else
-      statusColor = Colors.orange;
+    final depositAmount = data['depositAmount'] ?? 0;
+    final type = data['type'] ?? 'Sampah';
+
+    Color statusIconColor;
+    if (data['status'] == 'approved') {
+      statusIconColor = Colors.green;
+    } else if (data['status'] == 'rejected') {
+      statusIconColor = Colors.red;
+    } else {
+      statusIconColor = Colors.orange;
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -126,7 +132,6 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
       elevation: 2,
       child: InkWell(
         onTap: () {
-          // Navigasi ke detail
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -142,7 +147,6 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              // Foto Thumbnail
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
@@ -164,13 +168,12 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
                 ),
               ),
               const SizedBox(width: 16),
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "${depositAmount} kg Sampah",
+                      "$type - $depositAmount kg",
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -178,30 +181,15 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      createdAt != null
-                          ? DateFormat('dd MMM yyyy, HH:mm').format(createdAt)
-                          : '-',
+                      date != null
+                          ? DateFormat('dd MMM yyyy, HH:mm').format(date)
+                          : 'Tanggal tidak tersedia',
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.person, size: 12, color: Colors.grey[500]),
-                        const SizedBox(width: 4),
-                        Text(
-                          "User ID: ${(data['userId'] ?? '').toString().substring(0, 5)}...",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
               ),
-              // Status Indicator Icon
-              Icon(Icons.chevron_right, color: statusColor),
+              Icon(Icons.chevron_right, color: statusIconColor),
             ],
           ),
         ),

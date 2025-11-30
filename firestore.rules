@@ -2,79 +2,81 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Rules untuk rewards collection
+    // --- HELPER FUNCTION ---
+    // Cek apakah user yang request memiliki role 'admin' atau 'petugas'
+    function isAdmin() {
+      return request.auth != null && 
+             (request.auth.token.role == "admin" || request.auth.token.role == "petugas");
+    }
+
+    // Cek apakah user sudah login
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // --- 1. REWARDS COLLECTION ---
     match /rewards/{document=**} {
-      // Allow read untuk semua authenticated users
-      allow read: if request.auth != null;
-
-      // Allow create, update, delete hanya untuk admin atau petugas
-      allow create: if request.auth != null &&
-                       (request.auth.token.role == "admin" ||
-                        request.auth.token.role == "petugas");
-
-      allow update: if request.auth != null &&
-                       (request.auth.token.role == "admin" ||
-                        request.auth.token.role == "petugas");
-
-      allow delete: if request.auth != null &&
-                       (request.auth.token.role == "admin" ||
-                        request.auth.token.role == "petugas");
+      // Semua user login bisa lihat katalog hadiah
+      allow read: if isAuthenticated();
+      // Hanya admin/petugas bisa kelola (tambah/edit/hapus)
+      allow write: if isAdmin();
     }
 
-    // Rules untuk users collection (existing)
+    // --- 2. USERS COLLECTION ---
     match /users/{userId} {
-      // Users can read their own data
-      allow read: if request.auth != null && request.auth.uid == userId;
-
-      // Users can update their own data
-      allow update: if request.auth != null && request.auth.uid == userId;
-
-      // Admin can read all users
-      allow read: if request.auth != null &&
-                     request.auth.token.role == "admin";
-
-      // Admin can update all users
-      allow update: if request.auth != null &&
-                       request.auth.token.role == "admin";
+      // User bisa baca/tulis datanya sendiri
+      allow read, update: if isAuthenticated() && request.auth.uid == userId;
+      // Admin bisa baca & update semua user (misal: banned user)
+      allow read, update: if isAdmin();
+      // Allow create saat register
+      allow create: if isAuthenticated();
     }
 
-    // Rules untuk verificationRequests collection (existing)
+    // --- 3. VERIFICATION REQUESTS (SETORAN) ---
     match /verificationRequests/{document=**} {
-      // Allow read untuk semua authenticated users
-      allow read: if request.auth != null;
-
-      // Allow create untuk semua authenticated users (users submit requests)
-      allow create: if request.auth != null;
-
-      // Allow update/delete hanya untuk admin atau petugas
-      allow update: if request.auth != null &&
-                       (request.auth.token.role == "admin" ||
-                        request.auth.token.role == "petugas");
-
-      allow delete: if request.auth != null &&
-                       (request.auth.token.role == "admin" ||
-                        request.auth.token.role == "petugas");
+      // User bisa buat request setoran
+      allow create: if isAuthenticated();
+      // User bisa lihat request miliknya sendiri
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      // Admin bisa update status (approve/reject) & hapus
+      allow update, delete: if isAdmin();
     }
 
-    // Rules untuk notifications collection (existing)
+    // --- 4. USER VOUCHERS (RIWAYAT PENUKARAN - BARU) ---
+    match /userVouchers/{document=**} {
+      // User bisa lihat vouchernya sendiri
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // User bisa buat voucher baru (saat redeem poin) - pastikan userId di data == uid login
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Admin bisa lihat semua riwayat penukaran
+      allow read: if isAdmin();
+    }
+
+    // --- 5. NOTIFICATIONS (PEMBERITAHUAN - BARU) ---
     match /notifications/{document=**} {
-      // Users can read their own notifications
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // User bisa lihat notifikasi miliknya
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // User bisa update status 'read' notifikasinya sendiri
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Admin (sistem) bisa buat notifikasi untuk user
+      allow create: if isAdmin();
+      // Admin bisa hapus/kelola notifikasi jika perlu
+      allow write: if isAdmin();
+    }
 
-      // Admin can read all notifications
-      allow read: if request.auth != null &&
-                     request.auth.token.role == "admin";
-
-      // Only admin can create notifications
-      allow create: if request.auth != null &&
-                       request.auth.token.role == "admin";
-
-      // Only admin can update/delete notifications
-      allow update: if request.auth != null &&
-                       request.auth.token.role == "admin";
-
-      allow delete: if request.auth != null &&
-                       request.auth.token.role == "admin";
+    // --- 6. ARTICLES (EDUKASI) ---
+    match /articles/{document=**} {
+      // Public read (bahkan tanpa login pun boleh, atau batasi isAuthenticated())
+      allow read: if true;
+      // Hanya admin yang bisa nulis artikel
+      allow write: if isAdmin();
+    }
+    
+    // --- 7. TRANSACTIONS (LOG SETORAN/REDEEM - JIKA ADA) ---
+    match /transactions/{document=**} {
+       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+       allow read: if isAdmin();
     }
   }
 }

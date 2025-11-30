@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../../app/config/app_colors.dart';
+// Import Absolute
+import 'package:ecopoin_unila/app/config/app_colors.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({Key? key}) : super(key: key);
+  const EditProfileScreen({super.key});
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -55,7 +56,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               'phoneNumber': _phoneController.text.trim(),
             });
 
-        // 2. Update Auth Profile (Display Name)
+        // 2. Update Auth Profile (agar nama di dashboard langsung berubah)
         await user.updateDisplayName(_nameController.text.trim());
 
         if (mounted) {
@@ -90,6 +91,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Padding(
@@ -100,10 +102,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Nama Lengkap',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: const Icon(Icons.person),
                 ),
                 validator: (val) =>
                     val!.isEmpty ? 'Nama tidak boleh kosong' : null,
@@ -111,10 +115,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _phoneController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Nomor Telepon',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: const Icon(Icons.phone),
                 ),
                 keyboardType: TextInputType.phone,
               ),

@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../app/config/app_colors.dart';
 import '../../../../services/firestore_service.dart';
+import '../screens/user_deposit_detail_screen.dart'; // Import Detail Screen
 
 class HistoryDepositTab extends StatelessWidget {
   const HistoryDepositTab({super.key});
 
-  // Fungsi Pengaman Tipe Data
   double _safeDouble(dynamic value) {
     if (value == null) return 0.0;
     if (value is double) return value;
@@ -61,6 +61,7 @@ class HistoryDepositTab extends StatelessWidget {
             final String type = data['type']?.toString() ?? 'Sampah';
             final double weight = _safeDouble(data['weight']);
             final int points = _safeInt(data['pointsEarned']);
+            final String status = data['status'] ?? 'pending';
 
             String date = 'Baru saja';
             if (data['timestamp'] != null && data['timestamp'] is Timestamp) {
@@ -69,76 +70,89 @@ class HistoryDepositTab extends StatelessWidget {
               ).format((data['timestamp'] as Timestamp).toDate());
             }
 
-            return Container(
+            // Tentukan warna status
+            Color statusColor = Colors.orange;
+            if (status == 'approved') statusColor = Colors.green;
+            if (status == 'rejected') statusColor = Colors.red;
+
+            return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                side: BorderSide(color: Colors.grey.shade200),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+              child: InkWell(
+                onTap: () {
+                  // Navigasi ke Detail
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UserDepositDetailScreen(data: data),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.recycling,
-                          color: AppColors.primary,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.recycling, color: statusColor),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                type,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                date,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            type,
-                            style: const TextStyle(
+                            status == 'rejected' ? 'Gagal' : "+$points Poin",
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
+                              color: status == 'rejected'
+                                  ? Colors.red
+                                  : AppColors.primary,
                               fontSize: 14,
                             ),
                           ),
                           Text(
-                            date,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
+                            "${weight.toStringAsFixed(1)} kg",
+                            style: const TextStyle(fontSize: 12),
                           ),
                         ],
                       ),
                     ],
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        "+$points Poin",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        "${weight.toStringAsFixed(1)} kg",
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             );
           },

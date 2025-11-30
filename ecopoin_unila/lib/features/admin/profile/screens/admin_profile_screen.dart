@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Import Service & Widgets
 import '../../../../services/verification_service.dart';
 import '../widgets/profile_header_widget.dart';
 import '../widgets/verification_summary_widget.dart';
 import '../widgets/profile_menu_section_widget.dart';
 import '../widgets/profile_menu_item_widget.dart';
+
+// Import Halaman Tujuan (Navigasi)
+import 'edit_profile_screen.dart';
+import 'user_management_screen.dart';
+import 'app_settings_screen.dart';
+import 'help_support_screen.dart';
+import '../../../user/auth/screens/login_screen.dart'; // Untuk navigasi logout
 
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({Key? key}) : super(key: key);
@@ -25,14 +34,16 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     _verificationService = VerificationService();
   }
 
+  // Mengambil data admin dari Firestore
   Future<DocumentSnapshot> _getUserData() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('User not authenticated');
     return await _firestore.collection('users').doc(user.uid).get();
   }
 
+  // Fungsi Logout
   Future<void> _handleLogout() async {
-    // Show confirmation dialog
+    // Tampilkan dialog konfirmasi
     if (mounted) {
       final confirmed = await showDialog<bool>(
         context: context,
@@ -57,17 +68,26 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         },
       );
 
+      // Jika user klik 'Logout'
       if (confirmed ?? false) {
         try {
           await _auth.signOut();
           if (mounted) {
-            Navigator.of(context).pushReplacementNamed('/login');
+            // Navigasi kembali ke halaman Login Utama & hapus semua route sebelumnya
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+            );
           }
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Error logout: $e')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error logout: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         }
       }
@@ -78,22 +98,23 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profil'),
+        title: const Text('Profil Admin'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+        automaticallyImplyLeading: false, // Hilangkan tombol back default
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Profile Header
+            // 1. Profile Header (Foto, Nama, Role)
             FutureBuilder<DocumentSnapshot>(
               future: _getUserData(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SizedBox(
-                    height: 300,
+                    height: 250,
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
@@ -101,21 +122,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                 if (snapshot.hasError || !snapshot.hasData) {
                   return const SizedBox(
                     height: 200,
-                    child: Center(child: Text('Error loading profile')),
+                    child: Center(child: Text('Gagal memuat profil')),
                   );
                 }
 
                 final userData = snapshot.data!.data() as Map<String, dynamic>?;
-                if (userData == null) {
-                  return const SizedBox(
-                    height: 200,
-                    child: Center(child: Text('User data not found')),
-                  );
-                }
 
-                final name = userData['name'] as String? ?? 'Admin';
-                final photoUrl = userData['photoUrl'] as String? ?? '';
-                final role = userData['role'] as String? ?? 'Admin';
+                // Fallback data jika null
+                final name =
+                    userData?['displayName'] ?? userData?['name'] ?? 'Admin';
+                final photoUrl = userData?['photoUrl'] ?? '';
+                final role = (userData?['role'] ?? 'Admin')
+                    .toString()
+                    .toUpperCase();
 
                 return ProfileHeaderWidget(
                   name: name,
@@ -124,18 +143,20 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                 );
               },
             ),
+
             const SizedBox(height: 16),
 
-            // Verification Summary Card
+            // 2. Verification Summary Card (Ringkasan Kinerja)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: VerificationSummaryWidget(
                 verificationService: _verificationService,
               ),
             ),
+
             const SizedBox(height: 32),
 
-            // Menu Section: Pengaturan Akun
+            // 3. Menu Section: Pengaturan Akun
             ProfileMenuSectionWidget(
               title: 'Pengaturan Akun',
               children: [
@@ -143,10 +164,13 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   icon: Icons.edit_rounded,
                   label: 'Edit Profil',
                   onTap: () {
-                    // TODO: Navigate to edit profile screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Edit profil coming soon')),
-                    );
+                    // Navigasi ke Edit Profil
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EditProfileScreen(),
+                      ),
+                    ).then((_) => setState(() {})); // Refresh setelah kembali
                   },
                 ),
                 ProfileMenuItemWidget(
@@ -154,19 +178,21 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   label: 'Manajemen Pengguna',
                   divider: true,
                   onTap: () {
-                    // TODO: Navigate to user management screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('User management coming soon'),
+                    // Navigasi ke Manajemen Pengguna
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const UserManagementScreen(),
                       ),
                     );
                   },
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
 
-            // Menu Section: Pengaturan Aplikasi
+            // 4. Menu Section: Pengaturan Aplikasi
             ProfileMenuSectionWidget(
               title: 'Pengaturan Aplikasi',
               children: [
@@ -174,9 +200,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   icon: Icons.tune_rounded,
                   label: 'Pengaturan Aplikasi',
                   onTap: () {
-                    // TODO: Navigate to app settings screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('App settings coming soon')),
+                    // Navigasi ke Settings
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AppSettingsScreen(),
+                      ),
                     );
                   },
                 ),
@@ -185,19 +214,21 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   label: 'Bantuan & Dukungan',
                   divider: false,
                   onTap: () {
-                    // TODO: Navigate to help screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Help & Support coming soon'),
+                    // Navigasi ke Help
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HelpSupportScreen(),
                       ),
                     );
                   },
                 ),
               ],
             ),
+
             const SizedBox(height: 32),
 
-            // Logout Button
+            // 5. Logout Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SizedBox(

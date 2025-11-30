@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
-import '../../../../services/firebase_auth_service.dart'; // Pastikan import ini benar
+import '../../../../services/firebase_auth_service.dart';
 import '../widgets/auth_text_field.dart';
 import 'register_screen.dart';
 import 'admin_login_screen.dart';
@@ -15,14 +15,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // 1. Controller untuk menangkap input user
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
-  // Service Auth
   final FirebaseAuthService _authService = FirebaseAuthService();
-
-  // State untuk loading
   bool _isLoading = false;
 
   @override
@@ -32,42 +27,31 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // Fungsi Login
   void _handleLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
-    // Validasi sederhana
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email dan Password tidak boleh kosong")),
       );
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       return;
     }
 
     try {
-      // Panggil service login
       UserCredential? user = await _authService.loginWithEmailAndPassword(
         email: email,
         password: password,
       );
-
       if (user != null && mounted) {
-        // Jika sukses, navigasi ke MainScreen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       }
     } catch (e) {
-      // Tampilkan error jika gagal
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -77,13 +61,56 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // --- PERBAIKAN 1: LOGIKA LUPA PASSWORD ---
+  void _handleForgotPassword() async {
+    String email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Masukkan email Anda terlebih dahulu untuk reset password",
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _authService.resetPassword(email: email);
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Cek Email Anda"),
+            content: Text(
+              "Link reset password telah dikirim ke $email. Silakan cek kotak masuk atau folder spam.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Gagal mengirim email: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
+  // ----------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -110,31 +137,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 24.0),
-
-              // Form Email/NPM
-              // Pastikan AuthTextField menerima parameter 'controller'
               AuthTextField(
                 label: "Email",
                 placeholder: "Masukkan email Anda",
-                controller: _emailController, // Hubungkan controller
+                controller: _emailController,
               ),
               const SizedBox(height: 16.0),
-
-              // Form Password
               AuthTextField(
                 label: "Password",
                 placeholder: "Masukkan password Anda",
                 isPassword: true,
-                controller: _passwordController, // Hubungkan controller
+                controller: _passwordController,
               ),
               const SizedBox(height: 12.0),
 
+              // --- PERBAIKAN 1: TOMBOL LUPA PASSWORD ---
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {
-                    // Tambahkan fitur lupa password nanti
-                  },
+                  onPressed: _handleForgotPassword, // Panggil fungsi reset
                   child: const Text(
                     "Lupa Password?",
                     style: TextStyle(
@@ -144,13 +165,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24.0),
 
-              // Tombol Login
+              const SizedBox(height: 24.0),
               ElevatedButton(
-                onPressed: _isLoading
-                    ? null
-                    : _handleLogin, // Disable saat loading
+                onPressed: _isLoading ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.textDark,
@@ -177,7 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
               ),
               const SizedBox(height: 24.0),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -186,14 +203,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(color: AppColors.textDark),
                   ),
                   TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RegisterScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterScreen(),
+                      ),
+                    ),
                     child: const Text(
                       "Daftar",
                       style: TextStyle(
@@ -207,14 +222,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
               TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AdminLoginScreen(),
-                    ),
-                  );
-                },
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminLoginScreen(),
+                  ),
+                ),
                 child: const Text(
                   "Login sebagai Admin / Petugas",
                   style: TextStyle(

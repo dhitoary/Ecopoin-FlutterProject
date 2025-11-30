@@ -6,19 +6,45 @@ import '../../../../services/firestore_service.dart';
 import '../widgets/profile_menu_item.dart';
 import '../widgets/stat_card.dart';
 import '../../auth/screens/onboarding_screen.dart';
-import 'edit_profile_screen.dart'; // Import halaman edit
+import 'edit_profile_screen.dart';
+import 'about_app_screen.dart'; // Pastikan file ini sudah dibuat sebelumnya
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   void _handleLogout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-        (route) => false,
-      );
+    // Tampilkan dialog konfirmasi logout
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Konfirmasi Logout"),
+        content: const Text("Apakah Anda yakin ingin keluar dari akun?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Ya, Keluar",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await FirebaseAuth.instance.signOut();
+      if (context.mounted) {
+        // Hapus semua route dan kembali ke Onboarding
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+          (route) => false,
+        );
+      }
     }
   }
 
@@ -30,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
     return StreamBuilder<DocumentSnapshot>(
       stream: firestoreService.getUserStream(),
       builder: (context, snapshot) {
-        // Data Default
+        // Data Default (Placeholder saat loading/error)
         String displayName = user?.displayName ?? "Pengguna";
         String email = user?.email ?? "";
         String phoneNumber = "-";
@@ -42,9 +68,11 @@ class ProfileScreen extends StatelessWidget {
           final data = snapshot.data!.data() as Map<String, dynamic>;
           displayName =
               data['displayName'] ?? displayName; // Ambil nama terbaru
+          email = data['email'] ?? email; // Ambil email terbaru
           phoneNumber = (data['phoneNumber'] ?? "-").toString();
-          points = data['points'] ?? 0;
-          totalWeight = (data['totalDepositWeight'] ?? 0.0).toDouble();
+          points = (data['points'] ?? 0).toInt(); // Pastikan int
+          totalWeight = (data['totalDepositWeight'] ?? 0.0)
+              .toDouble(); // Pastikan double
         }
 
         return Scaffold(
@@ -194,6 +222,7 @@ class ProfileScreen extends StatelessWidget {
                                 content: Text(
                                   "Link reset password telah dikirim ke $email",
                                 ),
+                                backgroundColor: Colors.green,
                               ),
                             );
                           }
@@ -225,6 +254,21 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const Divider(height: 1),
 
+                      // Tombol Tentang Aplikasi (BARU)
+                      ProfileMenuItem(
+                        icon: Icons.info_outline,
+                        title: "Tentang Aplikasi",
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AboutAppScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1),
+
                       // Tombol Keluar
                       ProfileMenuItem(
                         icon: Icons.logout,
@@ -236,7 +280,9 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 100),
+                const SizedBox(
+                  height: 100,
+                ), // Spasi bawah agar tidak tertutup navbar
               ],
             ),
           ),
