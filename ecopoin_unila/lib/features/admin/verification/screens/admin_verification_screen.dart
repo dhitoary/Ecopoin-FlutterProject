@@ -68,12 +68,25 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
 
   Widget _buildListByStatus(String status) {
     return StreamBuilder<QuerySnapshot>(
-      // PERBAIKAN: Hapus .orderBy('createdAt') agar data muncul tanpa Index Firestore
+      // Gunakan stream tanpa orderBy jika index belum siap
       stream: _firestore
           .collection('verificationRequests')
           .where('status', isEqualTo: status)
           .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                "Error Database: ${snapshot.error}",
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        }
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -83,10 +96,10 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
-                  "Tidak ada data $status",
+                  "Tidak ada data '$status'",
                   style: TextStyle(color: Colors.grey[600]),
                 ),
               ],
@@ -94,11 +107,33 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
           );
         }
 
+        // Proses sorting di client-side agar lebih aman
+        final docs = snapshot.data!.docs;
+        docs.sort((a, b) {
+          // Ambil data dengan aman
+          final dataA = a.data() as Map<String, dynamic>;
+          final dataB = b.data() as Map<String, dynamic>;
+
+          // Cek keberadaan field createdAt
+          final tA = dataA.containsKey('createdAt')
+              ? (dataA['createdAt'] as Timestamp?)
+              : null;
+          final tB = dataB.containsKey('createdAt')
+              ? (dataB['createdAt'] as Timestamp?)
+              : null;
+
+          // Handle null timestamp (anggap paling lama jika null)
+          if (tA == null) return 1;
+          if (tB == null) return -1;
+
+          return tB.compareTo(tA); // Descending (Terbaru di atas)
+        });
+
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
+          itemCount: docs.length,
           itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
+            final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
             return _buildCard(doc.id, data);
           },
@@ -108,11 +143,19 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
   }
 
   Widget _buildCard(String docId, Map<String, dynamic> data) {
-    // Handling null timestamp gracefully
     DateTime? date;
-    if (data['createdAt'] != null && data['createdAt'] is Timestamp) {
-      date = (data['createdAt'] as Timestamp).toDate();
+    // --- PERBAIKAN PENTING: Safe Parsing untuk CreatedAt ---
+    try {
+      if (data.containsKey('createdAt') && data['createdAt'] != null) {
+        final timestamp = data['createdAt'];
+        if (timestamp is Timestamp) {
+          date = timestamp.toDate();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error parsing date for doc $docId: $e");
     }
+    // -------------------------------------------------------
 
     final depositAmount = data['depositAmount'] ?? 0;
     final type = data['type'] ?? 'Sampah';
@@ -147,6 +190,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
+              // Foto Thumbnail
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
@@ -168,6 +212,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
                 ),
               ),
               const SizedBox(width: 16),
+              // Info Text
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,6 +234,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
                   ],
                 ),
               ),
+              // Status Icon
               Icon(Icons.chevron_right, color: statusIconColor),
             ],
           ),

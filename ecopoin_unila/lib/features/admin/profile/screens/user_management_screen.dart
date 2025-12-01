@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-// Import Absolute
 import 'package:ecopoin_unila/app/config/app_colors.dart';
 
 class UserManagementScreen extends StatefulWidget {
@@ -30,7 +29,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -45,54 +43,52 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   borderSide: BorderSide.none,
                 ),
               ),
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val.toLowerCase();
-                });
-              },
+              onChanged: (val) =>
+                  setState(() => _searchQuery = val.toLowerCase()),
             ),
           ),
 
-          // User List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
+              // QUERY SEMUA USER (Tanpa where clause)
               stream: FirebaseFirestore.instance
                   .collection('users')
-                  .where(
-                    'role',
-                    isEqualTo: 'mahasiswa',
-                  ) // Filter hanya mahasiswa
                   .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                if (snapshot.connectionState == ConnectionState.waiting)
                   return const Center(child: CircularProgressIndicator());
-                }
+                if (snapshot.hasError)
+                  return Center(child: Text("Error: ${snapshot.error}"));
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Text("Belum ada pengguna terdaftar"),
-                  );
-                }
+                final allUsers = snapshot.data?.docs ?? [];
 
-                // Client-side filtering untuk search
-                final users = snapshot.data!.docs.where((doc) {
+                // FILTER DI MEMORI (Lebih aman dari masalah indexing)
+                final filteredUsers = allUsers.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final name = (data['displayName'] ?? '')
                       .toString()
                       .toLowerCase();
-                  return name.contains(_searchQuery);
+                  final role = (data['role'] ?? 'user')
+                      .toString()
+                      .toLowerCase();
+
+                  // Hanya tampilkan jika BUKAN admin/petugas DAN sesuai search query
+                  return !['admin', 'petugas'].contains(role) &&
+                      name.contains(_searchQuery);
                 }).toList();
 
-                if (users.isEmpty) {
-                  return const Center(child: Text("Pengguna tidak ditemukan"));
+                if (filteredUsers.isEmpty) {
+                  return const Center(
+                    child: Text("Tidak ada pengguna ditemukan"),
+                  );
                 }
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: users.length,
+                  itemCount: filteredUsers.length,
                   itemBuilder: (context, index) {
-                    final data = users[index].data() as Map<String, dynamic>;
-                    // Handle potential null/int/double for points & weight
+                    final data =
+                        filteredUsers[index].data() as Map<String, dynamic>;
                     final points = data['points'] ?? 0;
                     final weight = data['totalDepositWeight'] ?? 0;
 
@@ -101,45 +97,26 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      elevation: 2,
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: AppColors.primary.withOpacity(0.1),
                           child: Text(
-                            (data['displayName'] ?? 'U')
-                                .toString()[0]
-                                .toUpperCase(),
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            (data['displayName'] ?? 'U')[0].toUpperCase(),
+                            style: const TextStyle(color: AppColors.primary),
                           ),
                         ),
                         title: Text(
                           data['displayName'] ?? 'Tanpa Nama',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(data['email'] ?? '-'),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Poin: $points | Setoran: ${weight.toString()} kg",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                        isThreeLine: true,
+                        subtitle: Text("Poin: $points | Setoran: $weight kg"),
                         trailing: IconButton(
-                          icon: const Icon(Icons.copy, size: 20),
+                          icon: const Icon(Icons.copy, size: 18),
                           onPressed: () {
-                            // Copy ID atau aksi lain
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("ID: ${users[index].id}")),
+                              SnackBar(
+                                content: Text("ID: ${filteredUsers[index].id}"),
+                              ),
                             );
                           },
                         ),

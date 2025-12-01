@@ -9,29 +9,16 @@ class AdminDashboardService {
 
   /// Stream total registered users dengan role 'mahasiswa' atau 'user'
   Stream<int> getTotalUsersStream() {
-    return _firestore
-        .collection('users')
-        .where('role', whereIn: ['mahasiswa', 'user'])
-        .snapshots()
-        .map((snapshot) => snapshot.docs.length);
-  }
-
-  /// Future untuk one-time query total users
-  Future<int> getTotalUsers() async {
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .where('role', whereIn: ['mahasiswa', 'user'])
-          .get();
-      return snapshot.docs.length;
-    } catch (e) {
-      debugPrint('Error getting total users: $e');
-      return 0;
-    }
+    return _firestore.collection('users').snapshots().map((snapshot) {
+      // Filter manual di client side untuk keamanan dan menghindari index error
+      return snapshot.docs.where((doc) {
+        final role = (doc.data()['role'] ?? 'user').toString().toLowerCase();
+        return role == 'mahasiswa' || role == 'user';
+      }).length;
+    });
   }
 
   /// Stream total sampah (kg) dari semua approved verifications
-  /// Dijumlahkan dari field depositAmount
   Stream<double> getTotalWasteStream() {
     return _firestore
         .collection('verificationRequests')
@@ -46,27 +33,6 @@ class AdminDashboardService {
           }
           return total;
         });
-  }
-
-  /// Future untuk one-time query total waste
-  Future<double> getTotalWaste() async {
-    try {
-      final snapshot = await _firestore
-          .collection('verificationRequests')
-          .where('status', isEqualTo: 'approved')
-          .get();
-
-      double total = 0;
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final amount = _safeDouble(data['depositAmount'] ?? 0);
-        total += amount;
-      }
-      return total;
-    } catch (e) {
-      debugPrint('Error getting total waste: $e');
-      return 0;
-    }
   }
 
   // ===== HELPER FUNCTIONS =====

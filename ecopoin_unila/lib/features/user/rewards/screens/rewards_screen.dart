@@ -4,7 +4,7 @@ import '../../../../app/config/app_colors.dart';
 import '../../../../services/firestore_service.dart';
 import '../widgets/points_header.dart';
 import '../widgets/reward_grid_view.dart';
-import 'my_vouchers_screen.dart'; // Import halaman baru
+import 'my_vouchers_screen.dart';
 
 class RewardsScreen extends StatelessWidget {
   const RewardsScreen({super.key});
@@ -24,8 +24,17 @@ class RewardsScreen extends StatelessWidget {
         backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textDark),
-
-        // --- TOMBOL VOUCHER SAYA (BARU) ---
+        // Tambahkan leading manual untuk kontrol back button
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              // Jika tidak bisa pop (misal dibuka langsung), jangan lakukan apa-apa atau ke Home
+            }
+          },
+        ),
         actions: [
           IconButton(
             onPressed: () {
@@ -43,7 +52,6 @@ class RewardsScreen extends StatelessWidget {
             tooltip: "Voucher Saya",
           ),
         ],
-        // ----------------------------------
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: firestoreService.getUserStream(),
@@ -52,7 +60,7 @@ class RewardsScreen extends StatelessWidget {
 
           if (snapshot.hasData && snapshot.data!.exists) {
             final data = snapshot.data!.data() as Map<String, dynamic>;
-            currentPoints = data['points'] ?? 0;
+            currentPoints = (data['points'] ?? 0).toInt(); // Pastikan int
           }
 
           return Column(

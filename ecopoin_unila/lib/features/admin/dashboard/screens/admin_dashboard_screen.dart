@@ -1,19 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Penting untuk SystemNavigator
-import 'package:intl/intl.dart';
+import 'package:flutter/services.dart'; // Untuk SystemNavigator
+import 'package:ecopoin_unila/app/config/app_colors.dart';
 
-import '../../../../app/config/app_colors.dart';
+// Import Services
 import '../../../../services/verification_service.dart';
 import '../../../../services/admin_dashboard_service.dart';
-import 'verification_detail_screen.dart';
-import 'admin_report_screen.dart';
+
+// Import Screens (PASTIKAN FILE-FILE INI ADA DI FOLDER YANG BENAR)
+import '../../verification/screens/admin_verification_screen.dart';
 import '../../rewards/screens/admin_rewards_management_screen.dart';
 import '../../profile/screens/admin_profile_screen.dart';
-import '../../verification/screens/admin_verification_screen.dart';
+import 'admin_report_screen.dart'; // Pastikan file ini ada di folder dashboard/screens
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({Key? key}) : super(key: key);
+  const AdminDashboardScreen({super.key}); // Gunakan super.key
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -24,71 +25,68 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final AdminDashboardService _dashboardService = AdminDashboardService();
   int _selectedTabIndex = 0;
 
-  // --- LOGIKA TOMBOL BACK ---
-  // Mencegah aplikasi tertutup tidak sengaja saat di Dashboard Admin
+  // LOGIKA BACK BUTTON (Anti Logout Tidak Sengaja)
   Future<bool> _onWillPop() async {
-    // Jika sedang di tab lain (bukan Dashboard), kembali ke Dashboard dulu
     if (_selectedTabIndex != 0) {
+      // Jika sedang di tab lain (selain Home), kembali ke Home dulu
       setState(() => _selectedTabIndex = 0);
       return false;
     }
 
-    // Jika sudah di Dashboard, tampilkan dialog konfirmasi
-    return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Keluar Aplikasi?'),
-            content: const Text('Apakah Anda yakin ingin menutup aplikasi?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Batal'),
-              ),
-              TextButton(
-                onPressed: () => SystemNavigator.pop(), // Tutup Aplikasi
-                child: const Text('Ya', style: TextStyle(color: Colors.red)),
-              ),
-            ],
+    // Jika sudah di Home, tanya konfirmasi keluar
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Keluar Aplikasi?'),
+        content: const Text('Apakah Anda yakin ingin menutup aplikasi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
           ),
-        ) ??
-        false;
+          TextButton(
+            onPressed: () => SystemNavigator.pop(), // Keluar total dari app
+            child: const Text(
+              'Ya, Keluar',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+    return shouldExit ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Bungkus dengan WillPopScope agar tombol back terkontrol
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: Stack(
+        body: IndexedStack(
+          index: _selectedTabIndex,
           children: [
-            IndexedStack(
-              index: _selectedTabIndex,
-              children: [
-                _buildDashboardTab(),
-                const AdminVerificationScreen(),
-                const AdminRewardsManagementScreen(),
-                const AdminProfileScreen(),
-              ],
-            ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: _buildBottomNavBar(),
-            ),
+            _buildDashboardTab(), // Index 0
+            const AdminVerificationScreen(), // Index 1
+            const AdminRewardsManagementScreen(), // Index 2
+            const AdminProfileScreen(), // Index 3
           ],
         ),
+        bottomNavigationBar: _buildBottomNavBar(),
       ),
     );
   }
 
+  // --- TAB DASHBOARD UTAMA ---
   Widget _buildDashboardTab() {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildHeader("Dashboard Admin"),
+
+          // Statistik Verifikasi Pending
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: FutureBuilder<Map<String, int>>(
@@ -138,6 +136,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               },
             ),
           ),
+
+          // Statistik User & Sampah
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
@@ -164,7 +164,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ),
           ),
+
           const SizedBox(height: 32),
+
+          // Tombol Navigasi Cepat
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
@@ -181,6 +184,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   () => setState(() => _selectedTabIndex = 2),
                 ),
                 const SizedBox(height: 12),
+                // Navigasi ke Laporan
                 _buildActionButton(
                   "Lihat Laporan",
                   false,
@@ -200,62 +204,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xffcfe7d9)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textDark,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.textDark,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(String label, bool isPrimary, VoidCallback onTap) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary
-              ? AppColors.primary
-              : const Color(0xffe7f3ec),
-          foregroundColor: AppColors.textDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
+  // --- HELPER WIDGETS ---
   Widget _buildHeader(String title) {
     return SafeArea(
       bottom: false,
@@ -276,7 +225,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.refresh, color: AppColors.textDark),
-              onPressed: () => setState(() {}),
+              onPressed: () => setState(() {}), // Refresh dashboard
             ),
           ],
         ),
@@ -345,6 +294,62 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xffcfe7d9)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textDark,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textDark,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(String label, bool isPrimary, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isPrimary
+              ? AppColors.primary
+              : const Color(0xffe7f3ec),
+          foregroundColor: AppColors.textDark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
       ),
     );

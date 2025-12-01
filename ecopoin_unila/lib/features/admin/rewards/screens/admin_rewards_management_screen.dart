@@ -3,6 +3,7 @@ import 'package:ecopoin_unila/services/rewards_service.dart';
 import 'package:ecopoin_unila/features/admin/rewards/dialogs/add_reward_dialog.dart';
 import 'package:ecopoin_unila/features/admin/rewards/dialogs/edit_reward_dialog.dart';
 import 'package:ecopoin_unila/features/admin/rewards/widgets/reward_card_widget.dart';
+import 'package:ecopoin_unila/app/config/app_colors.dart';
 
 class AdminRewardsManagementScreen extends StatefulWidget {
   const AdminRewardsManagementScreen({Key? key}) : super(key: key);
@@ -42,10 +43,7 @@ class _AdminRewardsManagementScreenState
       context: context,
       builder: (context) => const AddRewardDialog(),
     );
-
-    if (result == true) {
-      setState(() {});
-    }
+    if (result == true) setState(() {});
   }
 
   Future<void> _showEditRewardDialog(RewardModel reward) async {
@@ -53,10 +51,7 @@ class _AdminRewardsManagementScreenState
       context: context,
       builder: (context) => EditRewardDialog(reward: reward),
     );
-
-    if (result == true) {
-      setState(() {});
-    }
+    if (result == true) setState(() {});
   }
 
   Future<void> _deleteReward(String rewardId) async {
@@ -67,17 +62,14 @@ class _AdminRewardsManagementScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Reward berhasil dihapus'),
-            backgroundColor: Color(0xFF13e76b),
+            backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -86,32 +78,22 @@ class _AdminRewardsManagementScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFf8fcfa),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
-            // Header dengan back button
+            // HEADER (Tanpa Tombol Back Manual)
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      size: 24,
-                      color: Color(0xFF0d1b13),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Manajemen Rewards',
-                      style: TextStyle(
-                        color: Color(0xFF0d1b13),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Text(
+                    'Manajemen Rewards',
+                    style: TextStyle(
+                      color: AppColors.textDark,
+                      fontSize: 20, // Sedikit diperbesar
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -165,18 +147,10 @@ class _AdminRewardsManagementScreenState
                     : _rewardsService.searchRewardsStream(_searchQuery),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF13e76b),
-                        ),
-                      ),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
-
-                  if (snapshot.hasError) {
+                  if (snapshot.hasError)
                     return Center(child: Text('Error: ${snapshot.error}'));
-                  }
 
                   final rewards = snapshot.data ?? [];
 
@@ -216,11 +190,10 @@ class _AdminRewardsManagementScreenState
                         ),
                     itemCount: rewards.length,
                     itemBuilder: (context, index) {
-                      final reward = rewards[index];
                       return RewardCardWidget(
-                        reward: reward,
-                        onEdit: () => _showEditRewardDialog(reward),
-                        onDelete: () => _deleteReward(reward.id),
+                        reward: rewards[index],
+                        onEdit: () => _showEditRewardDialog(rewards[index]),
+                        onDelete: () => _deleteReward(rewards[index].id),
                       );
                     },
                   );
@@ -230,11 +203,10 @@ class _AdminRewardsManagementScreenState
           ],
         ),
       ),
-      // FAB untuk tambah reward baru
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddRewardDialog,
-        backgroundColor: const Color(0xFF13e76b),
-        child: const Icon(Icons.add, color: Color(0xFF0d1b13), size: 28),
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add, color: AppColors.textDark, size: 28),
       ),
     );
   }
