@@ -59,15 +59,15 @@ class HistoryDepositTab extends StatelessWidget {
                 snapshot.data!.docs[index].data() as Map<String, dynamic>;
 
             final String type = data['type']?.toString() ?? 'Sampah';
-            final double weight = _safeDouble(data['weight']);
-            final int points = _safeInt(data['pointsEarned']);
+            final double weight = _safeDouble(data['depositAmount']);
+            final int points = _safeInt(data['pointsEarned'] ?? 0);
             final String status = data['status'] ?? 'pending';
 
             String date = 'Baru saja';
-            if (data['timestamp'] != null && data['timestamp'] is Timestamp) {
+            if (data['approvedAt'] != null && data['approvedAt'] is Timestamp) {
               date = DateFormat(
                 'dd MMM yyyy, HH:mm',
-              ).format((data['timestamp'] as Timestamp).toDate());
+              ).format((data['approvedAt'] as Timestamp).toDate());
             }
 
             // Tentukan warna status

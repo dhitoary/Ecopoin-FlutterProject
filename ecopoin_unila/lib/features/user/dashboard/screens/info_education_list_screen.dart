@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
+import 'education_detail_screen.dart';
 
 class InfoEducationListScreen extends StatelessWidget {
   final List<Map<String, String>> items;
@@ -59,9 +60,17 @@ class InfoEducationListScreen extends StatelessWidget {
                 child: Text(items[index]['summary'] ?? ""),
               ),
               onTap: () {
-                // Opsional: Bisa ditambahkan navigasi ke detail info jika perlu
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Detail info belum tersedia")),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EducationDetailScreen(
+                      title: items[index]['title'] ?? '',
+                      content:
+                          items[index]['content'] ??
+                          items[index]['summary'] ??
+                          '',
+                    ),
+                  ),
                 );
               },
             ),

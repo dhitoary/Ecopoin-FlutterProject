@@ -135,13 +135,14 @@ class FirestoreService {
     }
   }
 
-  // 5. AMBIL RIWAYAT DEPOSIT
+  // 5. AMBIL RIWAYAT DEPOSIT (APPROVED VERIFICATIONS)
   Stream<QuerySnapshot> getDepositHistory() {
     if (currentUserId == null) return const Stream.empty();
     return _db
-        .collection('deposits')
+        .collection('verificationRequests')
         .where('userId', isEqualTo: currentUserId)
-        .orderBy('timestamp', descending: true)
+        .where('status', isEqualTo: 'approved')
+        .orderBy('approvedAt', descending: true)
         .snapshots();
   }
 
