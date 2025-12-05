@@ -1,3 +1,5 @@
+// FILE: lib/features/user/rewards/widgets/reward_card.dart
+
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
 
@@ -19,6 +21,32 @@ class RewardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // LOGIKA PENGECEKAN TIPE GAMBAR
+    Widget buildImage() {
+      // Jika URL dimulai dengan 'http', pakai Image.network
+      if (imageUrl.startsWith('http')) {
+        return Image.network(
+          imageUrl,
+          fit: BoxFit.contain, // atau BoxFit.cover agar full
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const Center(child: CircularProgressIndicator());
+          },
+        );
+      }
+      // Jika tidak, pakai Image.asset (untuk gambar lokal)
+      else {
+        return Image.asset(
+          imageUrl,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.card_giftcard, size: 50, color: Colors.grey),
+        );
+      }
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -27,7 +55,9 @@ class RewardCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(
+                0.05,
+              ), // Perbaikan .withValues -> .withOpacity (lebih umum)
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -36,7 +66,7 @@ class RewardCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Gambar Hadiah
+            // 1. Gambar Hadiah (SUDAH DIPERBAIKI)
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -47,15 +77,7 @@ class RewardCard extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Image.asset(
-                    imageUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.card_giftcard,
-                      size: 50,
-                      color: Colors.grey,
-                    ),
-                  ),
+                  child: buildImage(), // Panggil fungsi gambar di sini
                 ),
               ),
             ),
@@ -97,7 +119,7 @@ class RewardCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
 
-                  // Tombol Tukar (Kecil)
+                  // Tombol Tukar
                   SizedBox(
                     width: double.infinity,
                     height: 32,

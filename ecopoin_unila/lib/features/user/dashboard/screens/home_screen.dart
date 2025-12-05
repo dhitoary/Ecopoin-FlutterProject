@@ -1,48 +1,63 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:ecopoin_unila/app/config/app_colors.dart';
-import 'package:ecopoin_unila/features/user/dashboard/widgets/article_card.dart';
-import 'package:ecopoin_unila/features/user/dashboard/widgets/hero_card.dart';
-import 'package:ecopoin_unila/features/user/dashboard/widgets/quick_action_button.dart';
+// --- IMPORT CONFIG & WIDGETS ---
+import '../../../../app/config/app_colors.dart';
+import '../../../../services/article_service.dart'; // Pastikan path ini benar
+import '../widgets/hero_card.dart';
+import '../widgets/quick_action_button.dart';
 
-import 'package:ecopoin_unila/features/user/education/screens/education_guide_screen.dart';
-import 'package:ecopoin_unila/features/user/education/screens/education_detail_screen.dart'; // Make sure this file exists
-import 'package:ecopoin_unila/features/user/deposit/screens/deposit_screen.dart';
-import 'package:ecopoin_unila/features/user/rewards/screens/rewards_screen.dart';
-import 'package:ecopoin_unila/features/user/notifications/screens/notification_screen.dart';
+// --- IMPORT SCREENS ---
+import '../../education/screens/education_guide_screen.dart';
+import '../../education/screens/education_detail_screen.dart';
+import '../../deposit/screens/deposit_screen.dart';
+import '../../rewards/screens/rewards_screen.dart';
+import '../../notifications/screens/notification_screen.dart';
 import 'info_education_list_screen.dart';
-import 'article_detail_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  // DATA EDUKASI STATIS (Bukan Dummy Loop)
-  static final List<Map<String, String>> _eduItems = [
-    {
-      'title': 'Jenis-jenis Sampah Plastik',
-      'summary':
-          'Kenali 7 kode segitiga pada kemasan plastik agar daur ulang lebih efektif.',
-    },
-    {
-      'title': 'Cara Membuat Kompos',
-      'summary':
-          'Panduan mengubah sisa makanan menjadi pupuk alami yang menyuburkan tanah.',
-    },
-    {
-      'title': 'Bahaya Limbah B3',
-      'summary': 'Baterai dan lampu bekas berbahaya! Jangan buang sembarangan.',
-    },
-    {
-      'title': 'Diet Kantong Plastik',
-      'summary':
-          'Tips mudah mengurangi penggunaan kantong kresek di kehidupan sehari-hari.',
-    },
-  ];
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final User? user = FirebaseAuth.instance.currentUser;
+  String _userName = "Teman Eco";
+
+  // Service untuk mengambil data Artikel
+  final ArticleService _articleService = ArticleService();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    if (user != null) {
+      try {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .get();
+
+        if (userDoc.exists && mounted) {
+          setState(() {
+            final data = userDoc.data() as Map<String, dynamic>;
+            _userName = data['name'] ?? data['fullName'] ?? "Teman Eco";
+          });
+        }
+      } catch (e) {
+        debugPrint("Gagal ambil data user: $e");
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final top3 = _eduItems.take(3).toList();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -75,13 +90,17 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 1. HERO CARD (Tanpa Parameter, sesuai kode asli Anda)
             const HeroCard(),
+
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 24.0),
+
+                  // 2. AKSI CEPAT
                   Text(
                     'Aksi Cepat',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -111,7 +130,8 @@ class HomeScreen extends StatelessWidget {
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const RewardsScreen(),
+                            builder: (_) =>
+                                const RewardsScreen(), // Pastikan file ini tidak error
                           ),
                         ),
                       ),
@@ -133,8 +153,9 @@ class HomeScreen extends StatelessWidget {
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                const DepositScreen(initialIndex: 1),
+                            builder: (_) => const DepositScreen(
+                              initialIndex: 1,
+                            ), // Pastikan DepositScreen menerima parameter ini
                           ),
                         ),
                       ),
@@ -142,7 +163,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32.0),
 
-                  // INFO & EDUKASI SECTION
+                  // 3. INFO & EDUKASI (Header)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -154,11 +175,11 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       TextButton(
+                        // Navigasi ke list tanpa parameter 'items'
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                InfoEducationListScreen(items: _eduItems),
+                            builder: (_) => const InfoEducationListScreen(),
                           ),
                         ),
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
@@ -174,141 +195,156 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12.0),
-                  Column(
-                    children: top3.asMap().entries.map((entry) {
-                      final isLast = entry.key == top3.length - 1;
-                      final item = entry.value;
-                      return Container(
-                        margin: EdgeInsets.only(bottom: isLast ? 0 : 12.0),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0),
-                          child: Material(
-                            color: Colors.white,
-                            child: InkWell(
-                              splashColor: AppColors.primary.withOpacity(0.1),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => EducationDetailScreen(
-                                    title: item['title']!,
-                                    summary: item['summary']!,
+
+                  // 4. LIST ARTIKEL HORIZONTAL
+                  SizedBox(
+                    height: 240,
+                    child: StreamBuilder<List<ArticleModel>>(
+                      stream: _articleService.getArticlesStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        // Jika Error atau Kosong
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.article_outlined,
+                                  color: Colors.grey[400],
+                                  size: 40,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Belum ada artikel",
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        // Ambil max 5 artikel
+                        final articles = snapshot.data!.take(5).toList();
+
+                        return ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: articles.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final article = articles[index];
+
+                            // TAMPILAN KARTU ARTIKEL
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EducationDetailScreen(
+                                      title: article.title,
+                                      // FIX: Gunakan parameter 'summary' sesuai kode lama Anda.
+                                      // Kita isi dengan content (jika ada) agar detailnya lengkap,
+                                      // atau fallback ke summary.
+                                      summary: article.content.isNotEmpty
+                                          ? article.content
+                                          : article.summary,
+                                    ),
                                   ),
+                                );
+                              },
+                              child: Container(
+                                width: 200,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0,
-                                  vertical: 14.0,
-                                ),
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
+                                    // GAMBAR
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(12),
+                                      ),
+                                      child: Container(
+                                        height: 110,
+                                        width: double.infinity,
+                                        color: Colors.grey[200],
+                                        child:
+                                            article.imageUrl != null &&
+                                                article.imageUrl!.isNotEmpty
+                                            ? Image.network(
+                                                article.imageUrl!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (ctx, err, stack) =>
+                                                        const Icon(
+                                                          Icons.broken_image,
+                                                          color: Colors.grey,
+                                                        ),
+                                              )
+                                            : const Icon(
+                                                Icons.image,
+                                                color: Colors.grey,
+                                              ),
+                                      ),
+                                    ),
+                                    // TEKS
+                                    Padding(
+                                      padding: const EdgeInsets.all(12),
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            item['title']!,
-                                            style: const TextStyle(
-                                              color: AppColors.textDark,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            article.title,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 6.0),
-                                          Text(
-                                            item['summary']!,
                                             style: const TextStyle(
-                                              color: AppColors.textGreen,
-                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Colors.black87,
                                             ),
-                                            maxLines: 1,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            article.summary,
+                                            maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 12.0),
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      color: AppColors.primary,
-                                      size: 24,
-                                    ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 32.0),
-
-                  // ARTIKEL & TIPS SECTION
-                  Text(
-                    'Artikel & Tips',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 16.0),
-                  LargeArticleCard(
-                    title: "Tips Mengurangi Sampah Plastik",
-                    description:
-                        "Bawa tumbler sendiri dan kurangi penggunaan sedotan plastik.",
-                    date: "20 Mei 2024",
-                    imageUrl: "assets/images/article_1.png",
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ArticleDetailScreen(
-                          title: "Tips Mengurangi Sampah Plastik",
-                          date: "20 Mei 2024",
-                          imageUrl: "assets/images/article_1.png",
-                          description:
-                              "Sampah plastik menjadi masalah utama...",
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16.0),
-                  SmallArticleCard(
-                    title: "Manfaat Daur Ulang Kertas",
-                    description:
-                        "Daur ulang 1 ton kertas dapat menyelamatkan 17 pohon.",
-                    imageUrl: "assets/images/article_2.png",
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ArticleDetailScreen(
-                          title: "Manfaat Daur Ulang Kertas",
-                          date: "18 Mei 2024",
-                          imageUrl: "assets/images/article_2.png",
-                          description: "Kertas bekas tugas kuliah...",
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16.0),
-                  SmallArticleCard(
-                    title: "Bahaya Sampah Elektronik",
-                    description:
-                        "Jangan buang baterai sembarangan, mengandung B3!",
-                    imageUrl: "assets/images/article_3.png",
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ArticleDetailScreen(
-                          title: "Bahaya Sampah Elektronik",
-                          date: "15 Mei 2024",
-                          imageUrl: "assets/images/article_3.png",
-                          description: "Baterai bekas...",
-                        ),
-                      ),
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 24.0),

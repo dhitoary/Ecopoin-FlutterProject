@@ -1,20 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Untuk SystemNavigator
+import 'package:flutter/services.dart';
 import 'package:ecopoin_unila/app/config/app_colors.dart';
 
 // Import Services
 import '../../../../services/verification_service.dart';
 import '../../../../services/admin_dashboard_service.dart';
 
-// Import Screens (PASTIKAN FILE-FILE INI ADA DI FOLDER YANG BENAR)
+// Import Screens
 import '../../verification/screens/admin_verification_screen.dart';
 import '../../rewards/screens/admin_rewards_management_screen.dart';
 import '../../profile/screens/admin_profile_screen.dart';
-import 'admin_report_screen.dart'; // Pastikan file ini ada di folder dashboard/screens
+import 'admin_report_screen.dart';
+import 'admin_article_screen.dart'; // [BARU] Import screen artikel
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key}); // Gunakan super.key
+  const AdminDashboardScreen({super.key});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -25,15 +26,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final AdminDashboardService _dashboardService = AdminDashboardService();
   int _selectedTabIndex = 0;
 
-  // LOGIKA BACK BUTTON (Anti Logout Tidak Sengaja)
   Future<bool> _onWillPop() async {
     if (_selectedTabIndex != 0) {
-      // Jika sedang di tab lain (selain Home), kembali ke Home dulu
       setState(() => _selectedTabIndex = 0);
       return false;
     }
-
-    // Jika sudah di Home, tanya konfirmasi keluar
     final shouldExit = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -45,7 +42,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: const Text('Batal'),
           ),
           TextButton(
-            onPressed: () => SystemNavigator.pop(), // Keluar total dari app
+            onPressed: () => SystemNavigator.pop(),
             child: const Text(
               'Ya, Keluar',
               style: TextStyle(color: Colors.red),
@@ -59,7 +56,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Bungkus dengan WillPopScope agar tombol back terkontrol
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -67,10 +63,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         body: IndexedStack(
           index: _selectedTabIndex,
           children: [
-            _buildDashboardTab(), // Index 0
-            const AdminVerificationScreen(), // Index 1
-            const AdminRewardsManagementScreen(), // Index 2
-            const AdminProfileScreen(), // Index 3
+            _buildDashboardTab(),
+            const AdminVerificationScreen(),
+            const AdminRewardsManagementScreen(),
+            const AdminProfileScreen(),
           ],
         ),
         bottomNavigationBar: _buildBottomNavBar(),
@@ -78,7 +74,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // --- TAB DASHBOARD UTAMA ---
+  // --- TAB DASHBOARD UTAMA (YANG DIPERBAIKI) ---
   Widget _buildDashboardTab() {
     return SingleChildScrollView(
       child: Column(
@@ -86,54 +82,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           _buildHeader("Dashboard Admin"),
 
-          // Statistik Verifikasi Pending
+          // 1. [PERBAIKAN] KARTU STATISTIK (PENDING & HARI INI)
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: FutureBuilder<Map<String, int>>(
-              future: _verificationService.getVerificationCounts(),
-              builder: (context, snapshot) {
-                final counts = snapshot.data ?? {'pending': 0};
-                return Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xffe7f3ec),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Setoran Perlu Diverifikasi",
-                        style: TextStyle(
-                          color: AppColors.textDark,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
+            child: Row(
+              children: [
+                // Card Pending (Setoran Baru)
+                Expanded(
+                  child: FutureBuilder<Map<String, int>>(
+                    future: _verificationService.getVerificationCounts(),
+                    builder: (context, snapshot) {
+                      final counts = snapshot.data ?? {'pending': 0};
+                      return _buildSummaryCard(
+                        "Perlu Proses",
                         counts['pending'].toString(),
-                        style: const TextStyle(
-                          color: AppColors.textDark,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        counts['pending']! > 0
-                            ? "Segera proses!"
-                            : "Semua beres",
-                        style: TextStyle(
-                          color: Colors.green[700],
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                        Colors.orange[100]!,
+                        Colors.orange[900]!,
+                        Icons.pending_actions,
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 12),
+                // Card Hari Ini (Selesai Hari Ini)
+                Expanded(
+                  child: StreamBuilder<int>(
+                    // Mengambil data real-time hari ini dari Service
+                    stream: _verificationService
+                        .getTodaysVerificationCountStream(),
+                    builder: (context, snapshot) {
+                      final countToday = snapshot.data ?? 0;
+                      return _buildSummaryCard(
+                        "Selesai Hari Ini",
+                        countToday.toString(),
+                        Colors.green[100]!,
+                        Colors.green[900]!,
+                        Icons.today,
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -167,24 +156,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           const SizedBox(height: 32),
 
-          // Tombol Navigasi Cepat
+          // 2. [PERBAIKAN] TOMBOL NAVIGASI LENGKAP
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
               children: [
                 _buildActionButton(
                   "Verifikasi Setoran",
-                  true,
+                  true, // Primary button
                   () => setState(() => _selectedTabIndex = 1),
                 ),
                 const SizedBox(height: 12),
+
+                // TOMBOL BARU UNTUK KELOLA ARTIKEL/EDUKASI
+                _buildActionButton(
+                  "Kelola Edukasi & Artikel",
+                  false,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminArticleScreen(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 _buildActionButton(
                   "Manajemen Rewards",
                   false,
                   () => setState(() => _selectedTabIndex = 2),
                 ),
                 const SizedBox(height: 12),
-                // Navigasi ke Laporan
+
                 _buildActionButton(
                   "Lihat Laporan",
                   false,
@@ -205,6 +208,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   // --- HELPER WIDGETS ---
+
+  // Widget Baru untuk Summary Card berwarna
+  Widget _buildSummaryCard(
+    String title,
+    String value,
+    Color bgColor,
+    Color textColor,
+    IconData icon,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: textColor, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            title,
+            style: TextStyle(
+              color: textColor.withOpacity(0.8),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(String title) {
     return SafeArea(
       bottom: false,
@@ -225,7 +269,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.refresh, color: AppColors.textDark),
-              onPressed: () => setState(() {}), // Refresh dashboard
+              onPressed: () => setState(() {}),
             ),
           ],
         ),

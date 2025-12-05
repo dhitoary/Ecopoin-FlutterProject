@@ -2,8 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:ecopoin_unila/app/config/app_colors.dart';
-import 'package:ecopoin_unila/features/admin/dashboard/screens/verification_detail_screen.dart';
+import '../../../../app/config/app_colors.dart';
+import '../../../../services/waste_price_service.dart'; // Import Service Baru
+import '../../dashboard/screens/verification_detail_screen.dart';
 
 class AdminVerificationScreen extends StatefulWidget {
   const AdminVerificationScreen({super.key});
@@ -17,6 +18,8 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final WastePriceService _wastePriceService =
+      WastePriceService(); // Init Service
 
   @override
   void initState() {
@@ -30,6 +33,124 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
     super.dispose();
   }
 
+  // --- LOGIC: UPDATE STATUS & HITUNG POIN DINAMIS ---
+  Future<void> _updateStatus({
+    required String docId,
+    required String newStatus,
+    required String userId,
+    required String wasteType, // Butuh tipe sampah
+    required double weight, // Butuh berat
+  }) async {
+    try {
+      int finalPoints = 0;
+
+      // 1. Jika Approved, HITUNG POIN berdasarkan data terbaru di Database
+      if (newStatus == 'approved') {
+        // Ambil harga poin per kg dari settingan admin
+        int pointsPerKg = await _wastePriceService.getPointsForType(wasteType);
+
+        // Jika tipe sampah tidak ditemukan di database setting, pakai default/fallback
+        if (pointsPerKg == 0) {
+          // Opsional: Beri alert atau gunakan nilai default misal 100
+          pointsPerKg = 100;
+        }
+
+        // Hitung total: Harga x Berat
+        finalPoints = (pointsPerKg * weight).toInt();
+
+        // Update Poin User
+        await _firestore.collection('users').doc(userId).update({
+          'points': FieldValue.increment(finalPoints),
+        });
+
+        // Buat Notifikasi
+        await _firestore.collection('notifications').add({
+          'userId': userId,
+          'title': 'Setoran Diterima! 🎉',
+          'body':
+              'Setoran $wasteType seberat $weight kg berhasil. Kamu dapat $finalPoints Poin.',
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } else if (newStatus == 'rejected') {
+        // Notifikasi Reject
+        await _firestore.collection('notifications').add({
+          'userId': userId,
+          'title': 'Setoran Ditolak 😔',
+          'body': 'Maaf, setoran sampahmu belum memenuhi syarat kami.',
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // 2. Update status & simpan poin yang didapat (earnedPoints) di history
+      await _firestore.collection('verificationRequests').doc(docId).update({
+        'status': newStatus,
+        'earnedPoints': finalPoints, // Simpan poin real yang didapat
+        'reviewedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Status: ${newStatus == 'approved' ? 'Disetujui' : 'Ditolak'}. Poin: $finalPoints",
+            ),
+            backgroundColor: newStatus == 'approved'
+                ? Colors.green
+                : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // --- UI: CONFIRMATION DIALOG ---
+  void _showConfirmationDialog(
+    BuildContext context,
+    String title,
+    String content,
+    Color color,
+    VoidCallback onConfirm,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onConfirm();
+            },
+            child: const Text(
+              "Ya, Lanjutkan",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,10 +158,10 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
       appBar: AppBar(
         title: const Text(
           "Verifikasi Setoran",
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 0.5,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
         bottom: TabBar(
@@ -48,6 +169,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
           labelColor: AppColors.primary,
           unselectedLabelColor: Colors.grey,
           indicatorColor: AppColors.primary,
+          indicatorWeight: 3,
           tabs: const [
             Tab(text: "Menunggu"),
             Tab(text: "Disetujui"),
@@ -68,65 +190,32 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
 
   Widget _buildListByStatus(String status) {
     return StreamBuilder<QuerySnapshot>(
-      // Gunakan stream tanpa orderBy jika index belum siap
       stream: _firestore
           .collection('verificationRequests')
           .where('status', isEqualTo: status)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                "Error Database: ${snapshot.error}",
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
+          return Center(child: Text("Error: ${snapshot.error}"));
         }
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text(
-                  "Tidak ada data '$status'",
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          );
+          return _buildEmptyState(status);
         }
 
-        // Proses sorting di client-side agar lebih aman
+        // Sorting Client-side (Terbaru di atas)
         final docs = snapshot.data!.docs;
         docs.sort((a, b) {
-          // Ambil data dengan aman
-          final dataA = a.data() as Map<String, dynamic>;
-          final dataB = b.data() as Map<String, dynamic>;
-
-          // Cek keberadaan field createdAt
-          final tA = dataA.containsKey('createdAt')
-              ? (dataA['createdAt'] as Timestamp?)
-              : null;
-          final tB = dataB.containsKey('createdAt')
-              ? (dataB['createdAt'] as Timestamp?)
-              : null;
-
-          // Handle null timestamp (anggap paling lama jika null)
+          final dA = a.data() as Map<String, dynamic>;
+          final dB = b.data() as Map<String, dynamic>;
+          final tA = dA['createdAt'] as Timestamp?;
+          final tB = dB['createdAt'] as Timestamp?;
           if (tA == null) return 1;
           if (tB == null) return -1;
-
-          return tB.compareTo(tA); // Descending (Terbaru di atas)
+          return tB.compareTo(tA);
         });
 
         return ListView.builder(
@@ -135,44 +224,53 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
           itemBuilder: (context, index) {
             final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
-            return _buildCard(doc.id, data);
+            return _buildCard(doc.id, data, status == 'pending');
           },
         );
       },
     );
   }
 
-  Widget _buildCard(String docId, Map<String, dynamic> data) {
-    DateTime? date;
-    // --- PERBAIKAN PENTING: Safe Parsing untuk CreatedAt ---
-    try {
-      if (data.containsKey('createdAt') && data['createdAt'] != null) {
-        final timestamp = data['createdAt'];
-        if (timestamp is Timestamp) {
-          date = timestamp.toDate();
-        }
-      }
-    } catch (e) {
-      debugPrint("Error parsing date for doc $docId: $e");
-    }
-    // -------------------------------------------------------
-
-    final depositAmount = data['depositAmount'] ?? 0;
-    final type = data['type'] ?? 'Sampah';
-
-    Color statusIconColor;
-    if (data['status'] == 'approved') {
-      statusIconColor = Colors.green;
-    } else if (data['status'] == 'rejected') {
-      statusIconColor = Colors.red;
+  Widget _buildEmptyState(String status) {
+    String message = "";
+    if (status == 'pending') {
+      message = "Tidak ada setoran baru";
+    } else if (status == 'approved') {
+      message = "Belum ada riwayat disetujui";
     } else {
-      statusIconColor = Colors.orange;
+      message = "Belum ada riwayat ditolak";
     }
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard(String docId, Map<String, dynamic> data, bool isPending) {
+    final date = (data['createdAt'] as Timestamp?)?.toDate();
+    final depositAmount = (data['depositAmount'] ?? 0)
+        .toDouble(); // Pastikan double
+    final weight = (data['weight'] ?? depositAmount).toDouble();
+
+    final wasteType = data['wasteType'] ?? data['type'] ?? 'Sampah';
+    final userId = data['userId'] ?? '';
+    final points = (data['earnedPoints'] ?? data['points'] ?? 0).toInt();
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
+      shadowColor: Colors.black12,
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -185,61 +283,205 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Foto Thumbnail
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  color: Colors.grey[200],
-                  child:
-                      data['photoUrl'] != null &&
-                          data['photoUrl'].toString().isNotEmpty
-                      ? Image.network(
-                          data['photoUrl'],
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.broken_image,
-                            color: Colors.grey,
-                          ),
-                        )
-                      : const Icon(Icons.image, color: Colors.grey),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Info Text
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "$type - $depositAmount kg",
+              // HEADER
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    child: const Icon(
+                      Icons.person,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: UserNameFetcher(
+                      userId: userId,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      date != null
-                          ? DateFormat('dd MMM yyyy, HH:mm').format(date)
-                          : 'Tanggal tidak tersedia',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  Text(
+                    date != null
+                        ? DateFormat('dd MMM HH:mm').format(date)
+                        : '-',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+
+              // CONTENT
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 70,
+                      height: 70,
+                      color: Colors.grey[100],
+                      child:
+                          data['imageUrl'] != null &&
+                              data['imageUrl'].toString().isNotEmpty
+                          ? Image.network(data['imageUrl'], fit: BoxFit.cover)
+                          : const Icon(Icons.image, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          wasteType,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text("Berat: $weight kg"),
+                        // Jika pending, tulis "Menunggu hitungan" karena poin belum fix
+                        Text(
+                          isPending
+                              ? "Poin: (Hitung Otomatis)"
+                              : "Dapat: $points Pts",
+                          style: const TextStyle(color: Colors.orange),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // ACTIONS
+              if (isPending) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          _showConfirmationDialog(
+                            context,
+                            "Tolak Setoran?",
+                            "Setoran akan ditolak.",
+                            Colors.red,
+                            () => _updateStatus(
+                              docId: docId,
+                              newStatus: 'rejected',
+                              userId: userId,
+                              wasteType: wasteType,
+                              weight: weight,
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.red,
+                        ),
+                        label: const Text(
+                          "Tolak",
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          _showConfirmationDialog(
+                            context,
+                            "Terima Setoran?",
+                            "Poin akan dihitung otomatis sesuai harga '$wasteType' saat ini.",
+                            Colors.green,
+                            () => _updateStatus(
+                              docId: docId,
+                              newStatus: 'approved',
+                              userId: userId,
+                              wasteType: wasteType,
+                              weight: weight,
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.check,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          "Terima",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              // Status Icon
-              Icon(Icons.chevron_right, color: statusIconColor),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+// Helper Widget
+// Ganti class UserNameFetcher yang lama dengan ini:
+class UserNameFetcher extends StatelessWidget {
+  final String userId;
+  final TextStyle? style;
+  const UserNameFetcher({super.key, required this.userId, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    if (userId.isEmpty) return Text("Unknown ID", style: style);
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Text("Loading...", style: style?.copyWith(color: Colors.grey));
+        }
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          if (data == null) return Text("Data Error", style: style);
+
+          // Coba ambil Name, FullName, atau Email
+          final name =
+              data['name'] ??
+              data['fullName'] ??
+              data['email'] ??
+              'User Tanpa Nama';
+
+          return Text(
+            name,
+            style: style,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+        }
+        return Text(
+          "User Tidak Ditemukan",
+          style: style?.copyWith(color: Colors.red),
+        );
+      },
     );
   }
 }
