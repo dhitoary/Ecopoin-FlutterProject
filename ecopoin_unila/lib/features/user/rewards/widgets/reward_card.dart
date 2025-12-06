@@ -1,5 +1,4 @@
-// FILE: lib/features/user/rewards/widgets/reward_card.dart
-
+import 'dart:convert'; // WAJIB ADA untuk decode base64
 import 'package:flutter/material.dart';
 import '../../../../app/config/app_colors.dart';
 
@@ -21,27 +20,41 @@ class RewardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // LOGIKA PENGECEKAN TIPE GAMBAR
+    // Fungsi pintar untuk mendeteksi tipe gambar
     Widget buildImage() {
-      // Jika URL dimulai dengan 'http', pakai Image.network
+      if (imageUrl.isEmpty) {
+        return const Icon(Icons.card_giftcard, size: 50, color: Colors.grey);
+      }
+
+      // 1. Jika URL Internet (http/https)
       if (imageUrl.startsWith('http')) {
         return Image.network(
           imageUrl,
-          fit: BoxFit.contain, // atau BoxFit.cover agar full
-          errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return const Center(child: CircularProgressIndicator());
-          },
+          fit: BoxFit.contain,
+          errorBuilder: (ctx, err, stack) =>
+              const Icon(Icons.broken_image, color: Colors.grey),
         );
       }
-      // Jika tidak, pakai Image.asset (untuk gambar lokal)
+      // 2. Jika Base64 Data (data:image/...)
+      else if (imageUrl.startsWith('data:')) {
+        try {
+          final base64String = imageUrl.split(',').last;
+          return Image.memory(
+            base64Decode(base64String),
+            fit: BoxFit.contain,
+            errorBuilder: (ctx, err, stack) =>
+                const Icon(Icons.image_not_supported, color: Colors.grey),
+          );
+        } catch (e) {
+          return const Icon(Icons.error, color: Colors.red);
+        }
+      }
+      // 3. Jika Asset Lokal
       else {
         return Image.asset(
           imageUrl,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
+          errorBuilder: (ctx, err, stack) =>
               const Icon(Icons.card_giftcard, size: 50, color: Colors.grey),
         );
       }
@@ -55,9 +68,7 @@ class RewardCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(
-                0.05,
-              ), // Perbaikan .withValues -> .withOpacity (lebih umum)
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -66,7 +77,6 @@ class RewardCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Gambar Hadiah (SUDAH DIPERBAIKI)
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -77,12 +87,10 @@ class RewardCard extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: buildImage(), // Panggil fungsi gambar di sini
+                  child: buildImage(), // Panggil fungsi gambar baru
                 ),
               ),
             ),
-
-            // 2. Info Hadiah
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
@@ -118,8 +126,6 @@ class RewardCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-
-                  // Tombol Tukar
                   SizedBox(
                     width: double.infinity,
                     height: 32,

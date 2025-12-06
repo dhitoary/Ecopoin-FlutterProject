@@ -95,55 +95,53 @@ class VerificationService {
     required double depositAmount,
   }) async {
     try {
-      // Hitung poin (bisa disesuaikan rumusnya)
-      int pointsEarned = (depositAmount * 10).toInt();
+      // 1. HITUNG POIN (Misal: 1kg = 500 Poin)
+      // Sesuaikan angka pengali ini dengan kebijakan aplikasi kamu
+      int pointsEarned = (depositAmount * 500).toInt();
 
       await _db.runTransaction((transaction) async {
-        // IMPORTANT: Read before write in transactions
-        // Get user data first
         final userRef = _db.collection('users').doc(userId);
-        final userSnapshot = await transaction.get(userRef);
-
-        if (!userSnapshot.exists) {
-          throw Exception('User tidak ditemukan');
-        }
-
-        final data = userSnapshot.data() as Map<String, dynamic>;
-        int currentPoints = _safeInt(data['points']);
-        double currentWeight = _safeDouble(data['totalDepositWeight']);
-
-        // Now perform writes
-        // Update verification request
         final verificationRef = _db
             .collection('verificationRequests')
             .doc(verificationId);
+
+        // Baca User
+        final userSnapshot = await transaction.get(userRef);
+        if (!userSnapshot.exists) throw Exception('User tidak ditemukan');
+
+        final userData = userSnapshot.data() as Map<String, dynamic>;
+        int currentPoints = _safeInt(userData['points']);
+        double currentWeight = _safeDouble(userData['totalDepositWeight']);
+
+        // 2. UPDATE STATUS & SIMPAN POIN KE RIWAYAT
         transaction.update(verificationRef, {
           'status': 'approved',
           'approvedAt': FieldValue.serverTimestamp(),
           'approvedBy': currentUserId,
+          'earnedPoints':
+              pointsEarned, // <--- INI KUNCINYA AGAR MUNCUL DI RIWAYAT
         });
 
-        // Update user points dan weight
+        // 3. TAMBAH POIN KE USER
         transaction.update(userRef, {
           'points': currentPoints + pointsEarned,
           'totalDepositWeight': currentWeight + depositAmount,
         });
 
-        // Create notification for user
+        // 4. BUAT NOTIFIKASI
         final notificationRef = _db.collection('notifications').doc();
         transaction.set(notificationRef, {
           'userId': userId,
-          'title': 'Setoran Disetujui',
+          'title': 'Setoran Diterima! 🎉',
           'message':
-              'Setoran Anda seberat ${depositAmount}kg telah disetujui! Anda mendapat $pointsEarned poin.',
+              'Setoran $depositAmount kg berhasil. Kamu dapat $pointsEarned Poin.',
           'type': 'verification_approved',
-          'verificationId': verificationId,
           'read': false,
           'createdAt': FieldValue.serverTimestamp(),
         });
       });
     } catch (e) {
-      debugPrint('Error approving verification: $e');
+      debugPrint('Error approving: $e');
       rethrow;
     }
   }
@@ -228,21 +226,16 @@ class VerificationService {
   }
 
   // 9. GET TODAY'S VERIFICATION COUNT (STREAM - Real-time)
-  /// Returns a stream that emits the count of verifications created today
-  /// This will update in real-time as new verifications are approved/created
   Stream<int> getTodaysVerificationCountStream() {
     final now = DateTime.now();
+    // Ambil start hari ini (jam 00:00)
     final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
 
     return _db
         .collection('verificationRequests')
         .where('status', isEqualTo: 'approved')
-        .where(
-          'approvedAt',
-          isGreaterThanOrEqualTo: startOfDay,
-          isLessThanOrEqualTo: endOfDay,
-        )
+        .where('approvedAt', isGreaterThanOrEqualTo: startOfDay)
+        // Hapus bagian isLessThanOrEqualTo sementara untuk tes
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
