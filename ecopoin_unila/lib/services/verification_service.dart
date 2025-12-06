@@ -227,17 +227,34 @@ class VerificationService {
 
   // 9. GET TODAY'S VERIFICATION COUNT (STREAM - Real-time)
   Stream<int> getTodaysVerificationCountStream() {
-    final now = DateTime.now();
-    // Ambil start hari ini (jam 00:00)
-    final startOfDay = DateTime(now.year, now.month, now.day);
-
     return _db
         .collection('verificationRequests')
-        .where('status', isEqualTo: 'approved')
-        .where('approvedAt', isGreaterThanOrEqualTo: startOfDay)
-        // Hapus bagian isLessThanOrEqualTo sementara untuk tes
+        .where(
+          'status',
+          isEqualTo: 'approved',
+        ) // Ambil semua yang approved dulu
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map((snapshot) {
+          int count = 0;
+          final now = DateTime.now();
+
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+
+            // Ambil field approvedAt, pastikan tidak null dan tipe datanya benar
+            if (data['approvedAt'] != null && data['approvedAt'] is Timestamp) {
+              final approvedDate = (data['approvedAt'] as Timestamp).toDate();
+
+              // Logika Perbandingan: HANYA Tanggal, Bulan, dan Tahun (Abaikan Jam)
+              if (approvedDate.year == now.year &&
+                  approvedDate.month == now.month &&
+                  approvedDate.day == now.day) {
+                count++;
+              }
+            }
+          }
+          return count;
+        });
   }
 
   // 10. GET TODAY'S VERIFICATION COUNT (FUTURE - One-time query)

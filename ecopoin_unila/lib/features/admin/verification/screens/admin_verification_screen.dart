@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // [PENTING] Untuk ambil ID Admin
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/config/app_colors.dart';
-import '../../../../services/waste_price_service.dart'; // Import Service Baru
+import '../../../../services/waste_price_service.dart';
 import '../../dashboard/screens/verification_detail_screen.dart';
 
 class AdminVerificationScreen extends StatefulWidget {
@@ -18,8 +19,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final WastePriceService _wastePriceService =
-      WastePriceService(); // Init Service
+  final WastePriceService _wastePriceService = WastePriceService();
 
   @override
   void initState() {
@@ -38,32 +38,32 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
     required String docId,
     required String newStatus,
     required String userId,
-    required String wasteType, // Butuh tipe sampah
-    required double weight, // Butuh berat
+    required String wasteType,
+    required double weight,
   }) async {
     try {
+      // 1. Ambil ID Admin yang sedang login
+      final adminId = FirebaseAuth.instance.currentUser?.uid;
+
       int finalPoints = 0;
 
-      // 1. Jika Approved, HITUNG POIN berdasarkan data terbaru di Database
+      // Logika jika disetujui (Approved)
       if (newStatus == 'approved') {
-        // Ambil harga poin per kg dari settingan admin
         int pointsPerKg = await _wastePriceService.getPointsForType(wasteType);
 
-        // Jika tipe sampah tidak ditemukan di database setting, pakai default/fallback
+        // Jika harga tidak ditemukan, pakai default 100
         if (pointsPerKg == 0) {
-          // Opsional: Beri alert atau gunakan nilai default misal 100
           pointsPerKg = 100;
         }
 
-        // Hitung total: Harga x Berat
         finalPoints = (pointsPerKg * weight).toInt();
 
-        // Update Poin User
+        // Tambah Poin User
         await _firestore.collection('users').doc(userId).update({
           'points': FieldValue.increment(finalPoints),
         });
 
-        // Buat Notifikasi
+        // Buat Notifikasi Diterima
         await _firestore.collection('notifications').add({
           'userId': userId,
           'title': 'Setoran Diterima! 🎉',
@@ -72,8 +72,9 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
           'isRead': false,
           'createdAt': FieldValue.serverTimestamp(),
         });
-      } else if (newStatus == 'rejected') {
-        // Notifikasi Reject
+      }
+      // Logika jika ditolak (Rejected)
+      else if (newStatus == 'rejected') {
         await _firestore.collection('notifications').add({
           'userId': userId,
           'title': 'Setoran Ditolak 😔',
@@ -83,11 +84,13 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
         });
       }
 
-      // 2. Update status & simpan poin yang didapat (earnedPoints) di history
+      // 2. UPDATE UTAMA KE DATABASE
+      // Menyimpan approvedAt (Waktu Server) dan approvedBy (ID Admin)
       await _firestore.collection('verificationRequests').doc(docId).update({
         'status': newStatus,
-        'earnedPoints': finalPoints, // Simpan poin real yang didapat
-        'reviewedAt': FieldValue.serverTimestamp(),
+        'earnedPoints': finalPoints,
+        'approvedAt': FieldValue.serverTimestamp(), // [FIX] Waktu Realtime
+        'approvedBy': adminId, // [FIX] ID Admin tersimpan
       });
 
       if (mounted) {
@@ -206,16 +209,26 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
           return _buildEmptyState(status);
         }
 
-        // Sorting Client-side (Terbaru di atas)
+        // Sorting Client-side (Agar yang baru diverifikasi muncul paling atas)
         final docs = snapshot.data!.docs;
         docs.sort((a, b) {
           final dA = a.data() as Map<String, dynamic>;
           final dB = b.data() as Map<String, dynamic>;
-          final tA = dA['createdAt'] as Timestamp?;
-          final tB = dB['createdAt'] as Timestamp?;
+
+          // Logika Sorting:
+          // Jika pending -> pakai createdAt (waktu upload)
+          // Jika selesai -> pakai approvedAt (waktu verifikasi)
+          Timestamp? tA = dA['status'] == 'pending'
+              ? dA['createdAt']
+              : (dA['approvedAt'] ?? dA['createdAt']);
+
+          Timestamp? tB = dB['status'] == 'pending'
+              ? dB['createdAt']
+              : (dB['approvedAt'] ?? dB['createdAt']);
+
           if (tA == null) return 1;
           if (tB == null) return -1;
-          return tB.compareTo(tA);
+          return tB.compareTo(tA); // Descending (Terbaru diatas)
         });
 
         return ListView.builder(
@@ -257,9 +270,21 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
   }
 
   Widget _buildCard(String docId, Map<String, dynamic> data, bool isPending) {
-    final date = (data['createdAt'] as Timestamp?)?.toDate();
-    final depositAmount = (data['depositAmount'] ?? 0)
-        .toDouble(); // Pastikan double
+    // [FIX] LOGIKA TANGGAL REALTIME
+    // 1. Default: Ambil waktu upload user
+    Timestamp? displayTimestamp = data['createdAt'] as Timestamp?;
+
+    // 2. Jika status BUKAN pending (Disetujui/Ditolak),
+    //    Gunakan waktu 'approvedAt' agar sesuai jam admin klik tombol.
+    if (!isPending) {
+      displayTimestamp =
+          data['approvedAt'] as Timestamp? ??
+          data['reviewedAt'] as Timestamp? ??
+          displayTimestamp;
+    }
+
+    final date = displayTimestamp?.toDate();
+    final depositAmount = (data['depositAmount'] ?? 0).toDouble();
     final weight = (data['weight'] ?? depositAmount).toDouble();
 
     final wasteType = data['wasteType'] ?? data['type'] ?? 'Sampah';
@@ -311,6 +336,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
                       ),
                     ),
                   ),
+                  // Menampilkan Jam/Tanggal sesuai logika di atas
                   Text(
                     date != null
                         ? DateFormat('dd MMM HH:mm').format(date)
@@ -352,7 +378,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
                         ),
                         const SizedBox(height: 4),
                         Text("Berat: $weight kg"),
-                        // Jika pending, tulis "Menunggu hitungan" karena poin belum fix
+                        // Jika pending, tulis "Hitung Otomatis"
                         Text(
                           isPending
                               ? "Poin: (Hitung Otomatis)"
@@ -365,7 +391,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
                 ],
               ),
 
-              // ACTIONS
+              // ACTIONS (Hanya muncul jika Pending)
               if (isPending) ...[
                 const SizedBox(height: 16),
                 Row(
@@ -441,8 +467,7 @@ class _AdminVerificationScreenState extends State<AdminVerificationScreen>
   }
 }
 
-// Helper Widget
-// Ganti class UserNameFetcher yang lama dengan ini:
+// Helper Widget: Fetch Nama User
 class UserNameFetcher extends StatelessWidget {
   final String userId;
   final TextStyle? style;
@@ -463,7 +488,6 @@ class UserNameFetcher extends StatelessWidget {
           final data = snapshot.data!.data() as Map<String, dynamic>?;
           if (data == null) return Text("Data Error", style: style);
 
-          // Coba ambil Name, FullName, atau Email
           final name =
               data['name'] ??
               data['fullName'] ??
